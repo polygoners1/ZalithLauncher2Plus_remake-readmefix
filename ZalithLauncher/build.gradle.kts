@@ -295,4 +295,70 @@ dependencies {
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.ui.test.junit4)
+}import java.io.File
+import java.net.URL
+import java.nio.file.Files
+import java.nio.file.StandardCopyOption
+
+// Minecraft 26.3 ships LWJGL SDL 3.4.3, but this launcher keeps LWJGL Core
+// 3.3.6-snapshot. Fetch the compatibility jars before Android merges assets.
+val prepareMc263LwjglCompatibilityAssets = tasks.register("prepareMc263LwjglCompatibilityAssets") {
+    doLast {
+        val lwjglDir = file("src/main/assets/components/lwjgl3")
+        check(lwjglDir.mkdirs() || lwjglDir.isDirectory) {
+            "Could not create LWJGL asset directory: $lwjglDir"
+        }
+
+        fun fetchIfNeeded(url: String, filename: String, expectedSize: Long) {
+            val target = File(lwjglDir, filename)
+            if (target.isFile && target.length() == expectedSize) {
+                logger.lifecycle("LWJGL compatibility asset already present: $filename")
+                return
+            }
+
+            val temporary = File(lwjglDir, "$filename.download")
+            try {
+                logger.lifecycle("Downloading Minecraft 26.3 compatibility asset: $filename")
+                val connection = URL(url).openConnection().apply {
+                    connectTimeout = 20000
+                    readTimeout = 60000
+                }
+                connection.getInputStream().use { input ->
+                    temporary.outputStream().use { output -> input.copyTo(output) }
+                }
+                check(temporary.length() == expectedSize) {
+                    "Unexpected size for $filename: ${temporary.length()} bytes; expected $expectedSize. " +
+                        "The download may have returned an error page."
+                }
+                Files.move(temporary.toPath(), target.toPath(), StandardCopyOption.REPLACE_EXISTING)
+            } finally {
+                temporary.delete()
+            }
+        }
+
+        fetchIfNeeded(
+            "https://raw.githubusercontent.com/Star1xr/ZalithLauncher2Plus/b9631a18a3c11b4d4b2c27945506eb308a089435/ZalithLauncher/src/main/assets/components/lwjgl3/lwjgl-sdl.jar",
+            "lwjgl-sdl.jar",
+            994249L
+        )
+        fetchIfNeeded(
+            "https://raw.githubusercontent.com/Star1xr/ZalithLauncher2Plus/bb29ba278199b75558d670fa999db77713ec8836/ZalithLauncher/src/main/assets/components/lwjgl3/lwjgl-glfw-classes.jar",
+            "lwjgl-glfw-classes.jar",
+            10830155L
+        )
+
+        // Component extraction is versioned; refresh the existing runtime component.
+        val versionFile = File(lwjglDir, "version")
+        val patchedVersion = "1792022400000"
+        if (!versionFile.isFile || versionFile.readText().trim() != patchedVersion) {
+            versionFile.writeText("$patchedVersion\n")
+        }
+    }
+}
+
+// Ensure patched JARs are present before each Android variant merges its assets.
+tasks.configureEach {
+    if (name.startsWith("merge") && name.endsWith("Assets")) {
+        dependsOn(prepareMc263LwjglCompatibilityAssets)
+    }
 }
