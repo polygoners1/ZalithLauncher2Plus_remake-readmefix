@@ -1,15 +1,6 @@
 name: Build CI
 
 on:
-  push:
-    branches:
-      - '**'
-    paths-ignore:
-      - '.gitignore'
-      - '**/README.md'
-      - '**/README_*.md'
-      - '**/CHANGELOG.md'
-      - '**/CHANGELOG_*.md'
   workflow_dispatch:
 
 permissions:
