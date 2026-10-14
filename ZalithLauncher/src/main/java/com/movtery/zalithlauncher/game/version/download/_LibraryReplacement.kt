@@ -105,7 +105,7 @@ fun GameManifest.Library.filterLibrary(
     }
 
     val isLwjglSdlClasses = coordinates.size == 3 &&
-        (artifact == "lwjgl" || artifact == "lwjgl-sdl") &&
+        artifact == "lwjgl-sdl" &&
         !isNative
 
     if (allowLwjglSdlClasses && isLwjglSdlClasses) {
