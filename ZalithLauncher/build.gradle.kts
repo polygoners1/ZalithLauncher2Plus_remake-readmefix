@@ -165,9 +165,9 @@ androidComponents {
                             else -> return@doLast
                         }
                         val lwjglVersions = file("libs").listFiles { f ->
-                            f.name.matches(Regex("lwjgl-\d+\.\d+\.\d+-natives-release\.aar"))
+                            f.name.matches(Regex("lwjgl-\\d+\\.\\d+\\.\\d+-natives-release\\.aar"))
                         }
-                            ?.map { Regex("lwjgl-(\d+\.\d+\.\d+)-natives-release\.aar").find(it.name)!!.groupValues[1] }
+                            ?.map { Regex("lwjgl-(\\d+\\.\\d+\\.\\d+)-natives-release\\.aar").find(it.name)!!.groupValues[1] }
                             ?: emptyList()
                         lwjglVersions.forEach { version ->
                             val nativesDir = File(assetsDir, "app_runtime/lwjgl/$version/natives")
