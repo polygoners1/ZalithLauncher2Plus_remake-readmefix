@@ -311,10 +311,9 @@ val prepareMc263LwjglCompatibilityAssets = tasks.register("prepareMc263LwjglComp
 
         fun fetchIfNeeded(url: String, filename: String, expectedSize: Long) {
             val target = File(lwjglDir, filename)
-            if (target.isFile && target.length() == expectedSize) {
-                logger.lifecycle("LWJGL compatibility asset already present: $filename")
-                return
-            }
+            // Always replace the pinned compatibility artifact. A matching file size
+            // does not prove that an existing JAR contains the corrected bytecode.
+            logger.lifecycle("Refreshing pinned LWJGL compatibility asset: $filename")
 
             val temporary = File(lwjglDir, "$filename.download")
             try {
@@ -353,7 +352,7 @@ val prepareMc263LwjglCompatibilityAssets = tasks.register("prepareMc263LwjglComp
 
         // Force component extraction to refresh these compatibility assets.
         val versionFile = File(lwjglDir, "version")
-        val patchedVersion = "1792022400000"
+        val patchedVersion = "1792022400001"
         if (!versionFile.isFile || versionFile.readText().trim() != patchedVersion) {
             versionFile.writeText("$patchedVersion\n")
         }
