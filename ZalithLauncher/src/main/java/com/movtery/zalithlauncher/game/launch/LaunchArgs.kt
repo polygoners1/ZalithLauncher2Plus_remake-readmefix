@@ -230,7 +230,7 @@ class LaunchArgs(
         argsList.add("-Dminecraft.launcher.version=${BuildConfig.VERSION_NAME}")
 
         // Disable LWJGL Vulkan by default (SIGSEGV in libpojavexec JNI_OnLoad on Android)
-        argsList.add("-Dorg.lwjgl.vulkan.libname=")
+        argsList.add("-Dorg.lwjgl.vulkan.libname=/system/lib64/libzalith_vulkan_disabled.so")
         // DIR_NATIVE_LIB = APK lib/<abi> (from jniLibs + AARs in ZalithLauncher/libs/)
         argsList.add("-Dorg.lwjgl.librarypath=${PathManager.DIR_NATIVE_LIB}")
         argsList.add("-Dorg.lwjgl.sdl.libname=SDL3")

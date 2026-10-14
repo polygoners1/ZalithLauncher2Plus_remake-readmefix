@@ -177,7 +177,9 @@ abstract class Launcher(
             put("os.version", "Android-${Build.VERSION.RELEASE}")
             put("pojav.path.minecraft", getGameHome())
             put("pojav.path.private.account", PathManager.DIR_DATA_BASES.absolutePath)
-            put("org.lwjgl.vulkan.libname", "libvulkan.so")
+            // Default OFF: loading system libvulkan.so triggers SIGSEGV in libpojavexec JNI_OnLoad
+            // on this Android stack when Minecraft 26.3 calls NativeLibrariesBootstrap.tryLoadingVulkan()
+            put("org.lwjgl.vulkan.libname", "")
             put("glfwstub.windowWidth", screenSize.width.toString())
             put("glfwstub.windowHeight", screenSize.height.toString())
             put("glfwstub.initEgl", "false")
