@@ -249,9 +249,11 @@ class LaunchArgs(
         val varArgMap: MutableMap<String, String> = android.util.ArrayMap()
         val gameClassPath = generateLaunchClassPath(gameManifest)
         val lwjglClassPath = getLWJGL3ClassPath()
+        // Stub VK first: UnsatisfiedLinkError instead of SIGSEGV in libpojavexec
+        val vulkanStub = File(PathManager.DIR_COMPONENTS, "launcher/zalith-vulkan-stub.jar").absolutePath
         // SDL 绑定依赖同版本的 LWJGL Core，优先加载后再回退到启动器的 Android 兼容实现。
         val launchClassPath = if (gameManifest.libraries.usesLwjglSdl()) {
-            "$gameClassPath:$lwjglClassPath"
+            "$vulkanStub:$gameClassPath:$lwjglClassPath"
         } else {
             "$lwjglClassPath:$gameClassPath"
         }

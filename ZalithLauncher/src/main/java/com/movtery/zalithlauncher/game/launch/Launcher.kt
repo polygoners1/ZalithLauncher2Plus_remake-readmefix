@@ -179,7 +179,7 @@ abstract class Launcher(
             put("pojav.path.private.account", PathManager.DIR_DATA_BASES.absolutePath)
             // Default OFF: loading system libvulkan.so triggers SIGSEGV in libpojavexec JNI_OnLoad
             // on this Android stack when Minecraft 26.3 calls NativeLibrariesBootstrap.tryLoadingVulkan()
-            put("org.lwjgl.vulkan.libname", "")
+            put("org.lwjgl.vulkan.libname", "/system/lib64/libzalith_vulkan_disabled.so")
             put("glfwstub.windowWidth", screenSize.width.toString())
             put("glfwstub.windowHeight", screenSize.height.toString())
             put("glfwstub.initEgl", "false")
