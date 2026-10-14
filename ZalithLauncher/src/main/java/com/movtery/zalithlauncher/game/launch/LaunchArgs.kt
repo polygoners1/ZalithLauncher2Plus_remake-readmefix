@@ -18,6 +18,7 @@
 
 package com.movtery.zalithlauncher.game.launch
 
+import java.util.Base64
 import androidx.collection.ArrayMap
 import com.movtery.zalithlauncher.BuildConfig
 import com.movtery.zalithlauncher.BuildKeys
@@ -250,7 +251,15 @@ class LaunchArgs(
         val gameClassPath = generateLaunchClassPath(gameManifest)
         val lwjglClassPath = getLWJGL3ClassPath()
         // Stub VK first: UnsatisfiedLinkError instead of SIGSEGV in libpojavexec
-        val vulkanStub = File(PathManager.DIR_COMPONENTS, "launcher/zalith-vulkan-stub.jar").absolutePath
+        // Write jar if missing (component unpack may skip after upgrade)
+        val vulkanStubFile = File(PathManager.DIR_COMPONENTS, "launcher/zalith-vulkan-stub.jar")
+        if (!vulkanStubFile.isFile) {
+            vulkanStubFile.parentFile?.mkdirs()
+            vulkanStubFile.writeBytes(Base64.getDecoder().decode(
+                "UEsDBBQACAgIAPiKTl0AAAAAAAAAAAAAAAAJAAQATUVUQS1JTkYv/soAAAMAUEsHCAAAAAACAAAAAAAAAFBLAwQUAAgICAD4ik5dAAAAAAAAAAAAAAAAFAAAAE1FVEEtSU5GL01BTklGRVNULk1G803My0xLLS7RDUstKs7Mz7NSMNQz4OVyLkpNLElN0XWqBAqY6xnoGVooaIQmleaVlGrycvFyAQBQSwcIpKR+PTgAAAA3AAAAUEsDBAoAAAgAAPeKTl0AAAAAAAAAAAAAAAAEAAAAb3JnL1BLAwQKAAAIAAD3ik5dAAAAAAAAAAAAAAAACgAAAG9yZy9sd2pnbC9QSwMECgAACAAA+IpOXQAAAAAAAAAAAAAAABEAAABvcmcvbHdqZ2wvdnVsa2FuL1BLAwQUAAgICAD4ik5dAAAAAAAAAAAAAAAAGQAAAG9yZy9sd2pnbC92dWxrYW4vVksuY2xhc3NdUE1Lw0AUnO1XYqxWW3tUFk+tB0OvWgUptUiLHqIBvW2SNW67bmSTVv+Wp4KC3v1R4iaIBXfhzdvH8GZ2vr7fPgCcoO2ghLKFSh1V1Ai2pmzBXMlU7F4FUx5mBLW+UCI7JSh3ur4Fm2BvRbpRKctEei94NBFqNtQ60TYcgsEdkyJ7OKL+XM6YoiKlkUhZIHlEE0XPVKQTEdEOWxhIqRTBU2LW8hceUu9i5A1HfteBhXpubIOg3ZmsVL1MCxUf53YaBK1Ex658nsbSXRRirj8mqAySiBM0jC1+OX8MuL7O1Qnsfih/f+R4yVyH/Fzkc8sfH+YS6GHThJKfkrkmFphczGvXIDFYPViCvJqGYNvUWjF0YKP5R91HuVjgvMO6ba4tsf75j181tVVI7PwAUEsHCBXGyiQtAQAAjQEAAFBLAwQUAAgICAD3ik5dAAAAAAAAAAAAAAAAGAAAAG9yZy9sd2pnbC92dWxrYW4vVksuamF2YVWPuw7CMAxF93zFFVO78AEwMSCEYEN0YHObtJhaSZWkLRLqv5OCxOMMtq5fuu6oaqkxcL5ZynhrZDn00pJdq64vhSvUbElQCYWA4oCHQiJEiqn3FjNcI4u+N/lPbSZevRthzYizDWkn1Gz0kW279d757G92ZnEh4XhdoXi5AAdoDlSK0XAWG6u9Y42MhpQChMvO3Wgwd1PhtN+dtrsiX/xdzdcfOalv7DwPFE16KUueJzWpJ1BLBwhQmy8rtAAAAAoBAABQSwECFAAUAAgICAD4ik5dAAAAAAIAAAAAAAAACQAEAAAAAAAAAAAAAAAAAAAATUVUQS1JTkYv/soAAFBLAQIUABQACAgIAPiKTl2kpH49OAAAADcAAAAUAAAAAAAAAAAAAAAAAD0AAABNRVRBLUlORi9NQU5JRkVTVC5NRlBLAQIKAAoAAAgAAPeKTl0AAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAALcAAABvcmcvUEsBAgoACgAACAAA94pOXQAAAAAAAAAAAAAAAAoAAAAAAAAAAAAAAAAA2QAAAG9yZy9sd2pnbC9QSwECCgAKAAAIAAD4ik5dAAAAAAAAAAAAAAAAEQAAAAAAAAAAAAAAAAABAQAAb3JnL2x3amdsL3Z1bGthbi9QSwECFAAUAAgICAD4ik5dFcbKJC0BAACNAQAAGQAAAAAAAAAAAAAAAAAwAQAAb3JnL2x3amdsL3Z1bGthbi9WSy5jbGFzc1BLAQIUABQACAgIAPeKTl1Qmy8rtAAAAAoBAAAYAAAAAAAAAAAAAAAAAKQCAABvcmcvbHdqZ2wvdnVsa2FuL1ZLLmphdmFQSwUGAAAAAAcABwCzAQAAngMAAAAA"
+            ))
+        }
+        val vulkanStub = vulkanStubFile.absolutePath
         // SDL 绑定依赖同版本的 LWJGL Core，优先加载后再回退到启动器的 Android 兼容实现。
         val launchClassPath = if (gameManifest.libraries.usesLwjglSdl()) {
             "$vulkanStub:$gameClassPath:$lwjglClassPath"
