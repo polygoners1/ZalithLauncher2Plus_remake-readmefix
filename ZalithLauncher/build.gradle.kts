@@ -1,3 +1,4 @@
+
 import com.android.build.api.variant.FilterConfiguration.FilterType.ABI
 import com.android.build.api.variant.impl.VariantOutputImpl
 import com.android.build.gradle.tasks.MergeSourceSetFolders
@@ -14,22 +15,35 @@ plugins {
 }
 
 val zalithPackageName = "com.movtery.zalithlauncher"
-val launcherAPPName = project.findProperty("launcher_app_name") as? String ?: error("The \"launcher_app_name\" property is not set in gradle.properties.")
-val launcherName = project.findProperty("launcher_name") as? String ?: error("The \"launcher_name\" property is not set in gradle.properties.")
-val launcherShortName = project.findProperty("launcher_short_name") as? String ?: error("The \"launcher_short_name\" property is not set in gradle.properties.")
-val launcherUrl = project.findProperty("url_home") as? String ?: error("The \"url_home\" property is not set in gradle.properties.")
+val launcherAPPName = project.findProperty("launcher_app_name") as? String
+    ?: error("The \"launcher_app_name\" property is not set in gradle.properties.")
+val launcherName = project.findProperty("launcher_name") as? String
+    ?: error("The \"launcher_name\" property is not set in gradle.properties.")
+val launcherShortName = project.findProperty("launcher_short_name") as? String
+    ?: error("The \"launcher_short_name\" property is not set in gradle.properties.")
+val launcherUrl = project.findProperty("url_home") as? String
+    ?: error("The \"url_home\" property is not set in gradle.properties.")
 
-val launcherVersionCode = (project.findProperty("launcher_version_code") as? String)?.toIntOrNull() ?: error("The \"launcher_version_code\" property is not set as an integer in gradle.properties.")
-val launcherVersionName = project.findProperty("launcher_version_name") as? String ?: error("The \"launcher_version_name\" property is not set in gradle.properties.")
+val launcherVersionCode =
+    (project.findProperty("launcher_version_code") as? String)?.toIntOrNull()
+        ?: error("The \"launcher_version_code\" property is not set as an integer in gradle.properties.")
+val launcherVersionName = project.findProperty("launcher_version_name") as? String
+    ?: error("The \"launcher_version_name\" property is not set in gradle.properties.")
 
 val defaultOAuthClientID = project.findProperty("oauth_client_id") as? String
-val defaultStorePassword = project.findProperty("default_store_password") as? String ?: error("The \"default_store_password\" property is not set in gradle.properties.")
-val defaultKeyPassword = project.findProperty("default_key_password") as? String ?: error("The \"default_key_password\" property is not set in gradle.properties.")
+val defaultStorePassword = project.findProperty("default_store_password") as? String
+    ?: error("The \"default_store_password\" property is not set in gradle.properties.")
+val defaultKeyPassword = project.findProperty("default_key_password") as? String
+    ?: error("The \"default_key_password\" property is not set in gradle.properties.")
 val defaultCurseForgeApiKey = project.findProperty("curseforge_api_key") as? String
 
 val projectArch: String = System.getProperty("arch", "all")
 
-fun getKeyFromLocal(envKey: String, fileName: String? = null, default: String? = null): String {
+fun getKeyFromLocal(
+    envKey: String,
+    fileName: String? = null,
+    default: String? = null
+): String {
     val key = System.getenv(envKey)
     return key ?: fileName?.let {
         val file = File(rootDir, fileName)
@@ -51,6 +65,7 @@ android {
             keyAlias = "movtery_zalith_debug"
             keyPassword = defaultKeyPassword
         }
+
         create("debugBuild") {
             storeFile = file("zalith_launcher_debug.jks")
             storePassword = defaultStorePassword
@@ -79,6 +94,7 @@ android {
                 "proguard-rules.pro"
             )
         }
+
         debug {
             isMinifyEnabled = false
             applicationIdSuffix = ".debug"
@@ -89,9 +105,11 @@ android {
 
     splits {
         val arch = projectArch.takeIf { it != "all" } ?: return@splits
+
         abi {
             isEnable = true
             reset()
+
             when (arch) {
                 "arm" -> include("armeabi-v7a")
                 "arm64" -> include("arm64-v8a")
@@ -120,11 +138,13 @@ android {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
+
     buildFeatures {
         compose = true
         buildConfig = true
         prefab = true
     }
+
     testOptions {
         unitTests {
             isIncludeAndroidResources = true
@@ -137,26 +157,45 @@ androidComponents {
         variant.outputs.forEach { output ->
             if (output is VariantOutputImpl) {
                 val variantName = variant.name.replaceFirstChar { it.uppercaseChar() }
+
                 afterEvaluate {
-                    val task = tasks.named("merge${variantName}Assets").get() as MergeSourceSetFolders
+                    val task = tasks.named(
+                        "merge${variantName}Assets"
+                    ).get() as MergeSourceSetFolders
+
                     task.inputs.property("lwjglArch", projectArch)
+
                     task.doLast {
                         val assetsDir = task.outputDir.get().asFile
                         val jreList = listOf("jre-8", "jre-17", "jre-21", "jre-25")
                         val tag = "JREAssetsCleanup"
+
                         logger.lifecycle("[$tag] arch: $projectArch")
+
                         jreList.forEach { jreVersion ->
                             val runtimeDir = File("$assetsDir/runtimes/$jreVersion")
-                            logger.lifecycle("[$tag] runtimeDir: ${runtimeDir.absolutePath}")
+
+                            logger.lifecycle(
+                                "[$tag] runtimeDir: ${runtimeDir.absolutePath}"
+                            )
+
                             runtimeDir.listFiles()?.forEach {
-                                if (projectArch != "all" && it.name != "version" && !it.name.contains("universal") && it.name != "bin-$projectArch.tar.xz") {
-                                    logger.lifecycle("[$tag] delete: $it : ${it.delete()}")
+                                if (
+                                    projectArch != "all" &&
+                                    it.name != "version" &&
+                                    !it.name.contains("universal") &&
+                                    it.name != "bin-$projectArch.tar.xz"
+                                ) {
+                                    logger.lifecycle(
+                                        "[$tag] delete: $it : ${it.delete()}"
+                                    )
                                 }
                             }
                         }
 
                         // Strip non-target-arch LWJGL natives packaged from libs/*.aar
                         if (projectArch == "all") return@doLast
+
                         val abi = when (projectArch) {
                             "arm" -> "armeabi-v7a"
                             "arm64" -> "arm64-v8a"
@@ -164,17 +203,29 @@ androidComponents {
                             "x86_64" -> "x86_64"
                             else -> return@doLast
                         }
+
                         val lwjglVersions = file("libs").listFiles { f ->
-                            f.name.matches(Regex("lwjgl-\\d+\\.\\d+\\.\\d+-natives-release\\.aar"))
-                        }
-                            ?.map { Regex("lwjgl-(\\d+\\.\\d+\\.\\d+)-natives-release\\.aar").find(it.name)!!.groupValues[1] }
-                            ?: emptyList()
+                            f.name.matches(
+                                Regex("lwjgl-\\d+\\.\\d+\\.\\d+-natives-release\\.aar")
+                            )
+                        }?.map {
+                            Regex("lwjgl-(\\d+\\.\\d+\\.\\d+)-natives-release\\.aar")
+                                .find(it.name)!!
+                                .groupValues[1]
+                        } ?: emptyList()
+
                         lwjglVersions.forEach { version ->
-                            val nativesDir = File(assetsDir, "app_runtime/lwjgl/$version/natives")
+                            val nativesDir = File(
+                                assetsDir,
+                                "app_runtime/lwjgl/$version/natives"
+                            )
+
                             if (nativesDir.isDirectory) {
                                 nativesDir.listFiles()?.forEach { dir ->
                                     if (dir.isDirectory && dir.name != abi) {
-                                        logger.lifecycle("Removing non-target-arch natives: $dir")
+                                        logger.lifecycle(
+                                            "Removing non-target-arch natives: $dir"
+                                        )
                                         dir.deleteRecursively()
                                     }
                                 }
@@ -184,14 +235,17 @@ androidComponents {
                 }
 
                 (output.getFilter(ABI)?.identifier ?: "all").let { abi ->
-                    val baseName = "$launcherName-${if (variant.buildType == "release") launcherVersionName else "Debug-$launcherVersionName"}"
-                    output.outputFileName = if (abi == "all") "$baseName.apk" else "$baseName-$abi.apk"
+                    val baseName =
+                        "$launcherName-${if (variant.buildType == "release") launcherVersionName else "Debug-$launcherVersionName"}"
+
+                    output.outputFileName =
+                        if (abi == "all") "$baseName.apk"
+                        else "$baseName-$abi.apk"
                 }
             }
         }
     }
 }
-
 
 kotlin {
     compilerOptions {
@@ -203,12 +257,28 @@ kotlin {
 }
 
 buildKeys {
-    string("OAUTH_CLIENT_ID", getKeyFromLocal("OAUTH_CLIENT_ID", ".oauth_client_id.txt", defaultOAuthClientID), true)
+    string(
+        "OAUTH_CLIENT_ID",
+        getKeyFromLocal(
+            "OAUTH_CLIENT_ID",
+            ".oauth_client_id.txt",
+            defaultOAuthClientID
+        ),
+        true
+    )
     string("LAUNCHER_NAME", launcherAPPName, true)
     string("LAUNCHER_IDENTIFIER", launcherName, true)
     string("LAUNCHER_SHORT_NAME", launcherShortName, true)
     string("URL_HOME", launcherUrl, true)
-    string("CURSEFORGE_API", getKeyFromLocal("CURSEFORGE_API_KEY", ".curseforge_api.txt", defaultCurseForgeApiKey), true)
+    string(
+        "CURSEFORGE_API",
+        getKeyFromLocal(
+            "CURSEFORGE_API_KEY",
+            ".curseforge_api.txt",
+            defaultCurseForgeApiKey
+        ),
+        true
+    )
     string("BUILD_ARCH", projectArch)
 }
 
@@ -248,12 +318,14 @@ dependencies {
     implementation(libs.editor)
     implementation(libs.dev.haze)
     implementation(libs.dev.haze.blur)
-    //Project
+
+    // Project
     implementation(project(":LayerController"))
     implementation(project(":ColorPicker"))
     implementation(project(":Terracotta"))
     implementation(project(":InputMap"))
-    //Utils
+
+    // Utils
     implementation(libs.bytehook)
     implementation(libs.gson)
     implementation(libs.commons.io)
@@ -277,86 +349,128 @@ dependencies {
     implementation(libs.fishnet)
     implementation(libs.process.phoenix)
     implementation(libs.lunarcalendar)
-    implementation(fileTree(mapOf("dir" to "libs", "include" to listOf("*.jar", "*.aar"))))
-    //Safe
+    implementation(
+        fileTree(
+            mapOf(
+                "dir" to "libs",
+                "include" to listOf("*.jar", "*.aar")
+            )
+        )
+    )
+
+    // Safe
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
     implementation(libs.sqlcipher.android)
     ksp(libs.androidx.room.compiler)
-    //Support
+
+    // Support
     implementation(libs.proxy.client.android)
-    //Hilt
+
+    // Hilt
     implementation(libs.dagger.hilt.android)
     ksp(libs.dagger.hilt.android.compiler)
     implementation(libs.androidx.hilt.navigation.compose)
-    //Test
+
+    // Test
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.ui.test.junit4)
-}import java.io.File
-import java.net.URL
-import java.nio.file.Files
-import java.nio.file.StandardCopyOption
-
-// Minecraft 26.3 ships LWJGL SDL 3.4.3, but this launcher keeps LWJGL Core
-// 3.3.6-snapshot. Fetch the compatibility jars before Android merges assets.
-val prepareMc263LwjglCompatibilityAssets = tasks.register("prepareMc263LwjglCompatibilityAssets") {
-    doLast {
-        val lwjglDir = file("src/main/assets/components/lwjgl3")
-        check(lwjglDir.mkdirs() || lwjglDir.isDirectory) {
-            "Could not create LWJGL asset directory: $lwjglDir"
-        }
-
-        fun fetchIfNeeded(url: String, filename: String, expectedSize: Long) {
-            val target = File(lwjglDir, filename)
-            if (target.isFile && target.length() == expectedSize) {
-                logger.lifecycle("LWJGL compatibility asset already present: $filename")
-                return
-            }
-
-            val temporary = File(lwjglDir, "$filename.download")
-            try {
-                logger.lifecycle("Downloading Minecraft 26.3 compatibility asset: $filename")
-                val connection = URL(url).openConnection().apply {
-                    connectTimeout = 20000
-                    readTimeout = 60000
-                }
-                connection.getInputStream().use { input ->
-                    temporary.outputStream().use { output -> input.copyTo(output) }
-                }
-                check(temporary.length() == expectedSize) {
-                    "Unexpected size for $filename: ${temporary.length()} bytes; expected $expectedSize. " +
-                        "The download may have returned an error page."
-                }
-                Files.move(temporary.toPath(), target.toPath(), StandardCopyOption.REPLACE_EXISTING)
-            } finally {
-                temporary.delete()
-            }
-        }
-
-        fetchIfNeeded(
-            "https://raw.githubusercontent.com/Star1xr/ZalithLauncher2Plus/b9631a18a3c11b4d4b2c27945506eb308a089435/ZalithLauncher/src/main/assets/components/lwjgl3/lwjgl-sdl.jar",
-            "lwjgl-sdl.jar",
-            994249L
-        )
-        fetchIfNeeded(
-            "https://raw.githubusercontent.com/Star1xr/ZalithLauncher2Plus/bb29ba278199b75558d670fa999db77713ec8836/ZalithLauncher/src/main/assets/components/lwjgl3/lwjgl-glfw-classes.jar",
-            "lwjgl-glfw-classes.jar",
-            10830155L
-        )
-
-        // Component extraction is versioned; refresh the existing runtime component.
-        val versionFile = File(lwjglDir, "version")
-        val patchedVersion = "1792022400000"
-        if (!versionFile.isFile || versionFile.readText().trim() != patchedVersion) {
-            versionFile.writeText("$patchedVersion\n")
-        }
-    }
 }
 
-// Ensure patched JARs are present before each Android variant merges its assets.
+/*
+ * Minecraft 26.3 LWJGL compatibility assets.
+ *
+ * This task downloads the two JARs used by the proposed compatibility patch
+ * before Android asset merging. It does not by itself guarantee that the
+ * downloaded classes are compatible with every Launcher runtime.
+ */
+val prepareMc263LwjglCompatibilityAssets =
+    tasks.register("prepareMc263LwjglCompatibilityAssets") {
+        doLast {
+            val lwjglDir = file("src/main/assets/components/lwjgl3")
+
+            check(lwjglDir.mkdirs() || lwjglDir.isDirectory) {
+                "Could not create LWJGL asset directory: $lwjglDir"
+            }
+
+            fun fetchIfNeeded(
+                url: String,
+                filename: String,
+                expectedSize: Long
+            ) {
+                val target = java.io.File(lwjglDir, filename)
+
+                if (target.isFile && target.length() == expectedSize) {
+                    logger.lifecycle(
+                        "LWJGL compatibility asset already present: $filename"
+                    )
+                    return
+                }
+
+                val temporary =
+                    java.io.File(lwjglDir, "$filename.download")
+
+                try {
+                    logger.lifecycle(
+                        "Downloading Minecraft 26.3 compatibility asset: $filename"
+                    )
+
+                    val connection =
+                        java.net.URL(url).openConnection().apply {
+                            connectTimeout = 20000
+                            readTimeout = 60000
+                        }
+
+                    connection.getInputStream().use { input ->
+                        temporary.outputStream().use { output ->
+                            input.copyTo(output)
+                        }
+                    }
+
+                    check(temporary.length() == expectedSize) {
+                        "Unexpected size for $filename: " +
+                            "${temporary.length()} bytes; expected $expectedSize. " +
+                            "The download may have returned an error page."
+                    }
+
+                    java.nio.file.Files.move(
+                        temporary.toPath(),
+                        target.toPath(),
+                        java.nio.file.StandardCopyOption.REPLACE_EXISTING
+                    )
+                } finally {
+                    temporary.delete()
+                }
+            }
+
+            fetchIfNeeded(
+                "https://raw.githubusercontent.com/Star1xr/ZalithLauncher2Plus/b9631a18a3c11b4d4b2c27945506eb308a089435/ZalithLauncher/src/main/assets/components/lwjgl3/lwjgl-sdl.jar",
+                "lwjgl-sdl.jar",
+                994249L
+            )
+
+            fetchIfNeeded(
+                "https://raw.githubusercontent.com/Star1xr/ZalithLauncher2Plus/bb29ba278199b75558d670fa999db77713ec8836/ZalithLauncher/src/main/assets/components/lwjgl3/lwjgl-glfw-classes.jar",
+                "lwjgl-glfw-classes.jar",
+                10830155L
+            )
+
+            val versionFile =
+                java.io.File(lwjglDir, "version")
+            val patchedVersion = "1792022400000"
+
+            if (
+                !versionFile.isFile ||
+                versionFile.readText().trim() != patchedVersion
+            ) {
+                versionFile.writeText("$patchedVersion\n")
+            }
+        }
+    }
+
 tasks.configureEach {
     if (name.startsWith("merge") && name.endsWith("Assets")) {
         dependsOn(prepareMc263LwjglCompatibilityAssets)
