@@ -231,6 +231,9 @@ class LaunchArgs(
 
         // Disable LWJGL Vulkan by default (SIGSEGV in libpojavexec JNI_OnLoad on Android)
         argsList.add("-Dorg.lwjgl.vulkan.libname=")
+        // DIR_NATIVE_LIB = APK lib/<abi> (from jniLibs + AARs in ZalithLauncher/libs/)
+        argsList.add("-Dorg.lwjgl.librarypath=${PathManager.DIR_NATIVE_LIB}")
+        argsList.add("-Dorg.lwjgl.sdl.libname=SDL3")
 
         return argsList
     }
