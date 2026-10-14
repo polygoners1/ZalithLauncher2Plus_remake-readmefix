@@ -12,7 +12,11 @@ on:
       - '**/CHANGELOG_*.md'
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
+  # 1) Build APK
   Build:
     uses: ./.github/workflows/build.yml
     with:
@@ -22,3 +26,38 @@ jobs:
       STORE_PASSWORD: ${{ secrets.STORE_PASSWORD }}
       OAUTH_CLIENT_ID: ${{ secrets.OAUTH_CLIENT_ID }}
       CURSEFORGE_API_KEY: ${{ secrets.CURSEFORGE_API_KEY }}
+
+  # 2) สร้าง GitHub Release อัตโนมัติ (ไม่ใช่ Pre-release)
+  Release:
+    needs: Build
+    runs-on: ubuntu-latest
+    if: success()
+    steps:
+      - name: Checkout (เพื่ออ่านเวอร์ชัน)
+        uses: actions/checkout@v4
+
+      - name: Read version from gradle.properties
+        id: ver
+        run: |
+          VERSION_NAME=$(grep '^launcher_version_name=' ZalithLauncher/gradle.properties | cut -d= -f2)
+          VERSION_CODE=$(grep '^launcher_version_code=' ZalithLauncher/gradle.properties | cut -d= -f2)
+          echo "version_name=${VERSION_NAME}" >> $GITHUB_OUTPUT
+          echo "version_code=${VERSION_CODE}" >> $GITHUB_OUTPUT
+          echo "tag=v${VERSION_NAME}" >> $GITHUB_OUTPUT
+          echo "Detected version: \( {VERSION_NAME} ( \){VERSION_CODE})"
+
+      - name: Download Artifacts
+        uses: actions/download-artifact@v8
+        with:
+          path: ./release-artifacts
+          merge-multiple: true
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: ${{ steps.ver.outputs.tag }}
+          name: "Zalith Launcher 2 Plus ${{ steps.ver.outputs.version_name }}"
+          prerelease: false
+          generate_release_notes: true
+          files: ./release-artifacts/*.apk
+          fail_on_unmatched_files: false
