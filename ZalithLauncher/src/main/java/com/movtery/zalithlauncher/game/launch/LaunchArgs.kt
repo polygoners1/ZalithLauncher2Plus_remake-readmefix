@@ -229,6 +229,9 @@ class LaunchArgs(
         argsList.add("-Dminecraft.launcher.brand=${BuildKeys.LAUNCHER_NAME}")
         argsList.add("-Dminecraft.launcher.version=${BuildConfig.VERSION_NAME}")
 
+        // Disable LWJGL Vulkan by default (SIGSEGV in libpojavexec JNI_OnLoad on Android)
+        argsList.add("-Dorg.lwjgl.vulkan.libname=")
+
         return argsList
     }
 
@@ -259,8 +262,8 @@ class LaunchArgs(
 
         fun Any.processJvmArg(): String? = (this as? String)?.let { argument ->
             if (argument.startsWith("-Djava.library.path=")) {
-                //26.2+ Mojang 更改到了具体的路径，需要手动重定向
-                return@let $$"-Djava.library.path=${natives_directory}:${PathManager.DIR_NATIVE_LIB}"
+                // 26.2+ Mojang uses concrete path; redirect to runtime natives + APK jniLibs
+                return@let "-Djava.library.path=" + runtimeLibraryPath + ":" + PathManager.DIR_NATIVE_LIB
             }
             when {
                 argument.startsWith("-DignoreList=") -> {
@@ -326,7 +329,7 @@ class LaunchArgs(
 
         for (libItem in gameManifest.libraries) {
             if (!(GameManifest.Rule.checkRules(libItem.rules) && !libItem.isNative)) continue
-            val path = libItem.progressLibrary(allowLwjglSdlClasses = usesLwjglSdl) ?: continue
+            val path = libItem.progressLibrary(allowLwjglSdlClasses = usesLwjglSdl, allowVulkan = false) ?: continue
             with(libSortFix) {
                 libs.insertLib(libItem, getLibrariesHome() + "/" + path)
             }
@@ -339,8 +342,11 @@ class LaunchArgs(
     /**
      * @return 库相对路径
      */
-    private fun GameManifest.Library.progressLibrary(allowLwjglSdlClasses: Boolean = false): String? {
-        if (filterLibrary(allowLwjglSdlClasses)) return null
+    private fun GameManifest.Library.progressLibrary(
+        allowLwjglSdlClasses: Boolean = false,
+        allowVulkan: Boolean = false
+    ): String? {
+        if (filterLibrary(allowLwjglSdlClasses, allowVulkan)) return null
 
         var path = artifactToPath(this)
 

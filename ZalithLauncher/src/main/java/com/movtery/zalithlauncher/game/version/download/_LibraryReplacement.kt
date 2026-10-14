@@ -82,19 +82,35 @@ internal fun List<GameManifest.Library>.usesLwjglSdl(): Boolean = any { library 
  * @return 是否需要被过滤
  * @param allowLwjglSdlClasses when true, allow lwjgl + lwjgl-sdl (Java classes only)
  */
-fun GameManifest.Library.filterLibrary(allowLwjglSdlClasses: Boolean = false): Boolean {
+fun GameManifest.Library.filterLibrary(
+    allowLwjglSdlClasses: Boolean = false,
+    allowVulkan: Boolean = false
+): Boolean {
     val libraryName = name ?: return false
     val coordinates = libraryName.split(":")
+    val group = coordinates.getOrNull(0)
+    val artifact = coordinates.getOrNull(1)
+
+    if (libraryName.contains("jinput-platform") || libraryName.contains("twitch-platform")) {
+        return true
+    }
+
+    if (group != "org.lwjgl") {
+        return false
+    }
+
+    // Default OFF: filter lwjgl-vulkan (Vulkan bootstrap causes SIGSEGV in libpojavexec on Android)
+    if (!allowVulkan && artifact == "lwjgl-vulkan") {
+        return true
+    }
+
     val isLwjglSdlClasses = coordinates.size == 3 &&
-        coordinates[0] == "org.lwjgl" &&
-        (coordinates[1] == "lwjgl" || coordinates[1] == "lwjgl-sdl") &&
+        (artifact == "lwjgl" || artifact == "lwjgl-sdl") &&
         !isNative
 
-    return when {
-        // Allow only lwjgl + lwjgl-sdl (non-native) when this is an SDL version
-        coordinates.firstOrNull() == "org.lwjgl" -> !(allowLwjglSdlClasses && isLwjglSdlClasses)
-        libraryName.contains("jinput-platform") -> true
-        libraryName.contains("twitch-platform") -> true
-        else -> false
+    if (allowLwjglSdlClasses && isLwjglSdlClasses) {
+        return false
     }
+
+    return true
 }

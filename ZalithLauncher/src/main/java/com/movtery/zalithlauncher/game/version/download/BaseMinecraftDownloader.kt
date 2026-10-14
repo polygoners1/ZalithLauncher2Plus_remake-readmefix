@@ -158,7 +158,7 @@ class BaseMinecraftDownloader(
 
                 // Use filterLibrary instead of hard-coded check
                 // When this is an SDL version, allow downloading lwjgl + lwjgl-sdl
-                if (library.filterLibrary(allowLwjglSdlClasses = usesLwjglSdl)) return@forEach
+                if (library.filterLibrary(allowLwjglSdlClasses = usesLwjglSdl, allowVulkan = false)) return@forEach
 
                 val artifactPath: String = artifactToPath(library) ?: return@forEach
                 val (sha1: String?, url, size, isDownloadable) = library.downloads?.let { downloads ->
