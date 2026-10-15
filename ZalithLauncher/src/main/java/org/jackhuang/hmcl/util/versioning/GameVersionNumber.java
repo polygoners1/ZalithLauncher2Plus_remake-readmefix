@@ -854,8 +854,11 @@ public abstract sealed class GameVersionNumber implements Comparable<GameVersion
             List<LegacySnapshot> snapshots = new ArrayList<>(1024);
             List<Release> snapshotPrev = new ArrayList<>(1024);
 
-            //noinspection DataFlowIssue
-            try (var reader = new BufferedReader(new InputStreamReader(GameVersionNumber.class.getResourceAsStream("/assets/game/versions.txt"), StandardCharsets.US_ASCII))) {
+            var versionsStream = GameVersionNumber.class.getResourceAsStream("/assets/game/versions.txt");
+            if (versionsStream == null) {
+                throw new AssertionError("Missing classpath resource /assets/game/versions.txt (package under src/main/resources/assets/game/)");
+            }
+            try (var reader = new BufferedReader(new InputStreamReader(versionsStream, StandardCharsets.US_ASCII))) {
                 Release currentRelease = null;
                 GameVersionNumber prev = null;
 
@@ -890,8 +893,11 @@ public abstract sealed class GameVersionNumber implements Comparable<GameVersion
                 throw new AssertionError(e);
             }
 
-            //noinspection DataFlowIssue
-            try (var reader = new BufferedReader(new InputStreamReader(GameVersionNumber.class.getResourceAsStream("/assets/game/version-alias.csv"), StandardCharsets.US_ASCII))) {
+            var aliasStream = GameVersionNumber.class.getResourceAsStream("/assets/game/version-alias.csv");
+            if (aliasStream == null) {
+                throw new AssertionError("Missing classpath resource /assets/game/version-alias.csv (package under src/main/resources/assets/game/)");
+            }
+            try (var reader = new BufferedReader(new InputStreamReader(aliasStream, StandardCharsets.US_ASCII))) {
                 for (String line; (line = reader.readLine()) != null; ) {
                     if (line.isEmpty())
                         continue;
