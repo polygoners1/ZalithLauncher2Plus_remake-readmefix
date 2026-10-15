@@ -382,8 +382,7 @@ public class CallbackBridge {
                     SdlBridge.clearSdlInitialized();
                     StringWriter trace = new StringWriter();
                     e.printStackTrace(new PrintWriter(trace));
-                    LoggerBridge.append("ZalithLauncher: SDL launcher integration is unavailable:
-" + trace);
+                    LoggerBridge.append("ZalithLauncher: SDL launcher integration is unavailable:\n" + trace);
                 } finally {
                     done.countDown();
                 }
