@@ -117,7 +117,7 @@ object MinecraftVersions {
         currentManifest: VersionManifest
     ): VersionManifest? {
         return withContext(Dispatchers.IO) {
-            MinecraftVersions::class.java.getResourceAsStream("/assets/game/unlist_versions.json")?.use { input ->
+            MinecraftVersions::class.java.getResourceAsStream("/hmcl/game/unlist_versions.json")?.use { input ->
                 input.readString()
             }?.let { unlistVersionJson ->
                 GSON.fromJson<List<VersionManifest.Version>>(

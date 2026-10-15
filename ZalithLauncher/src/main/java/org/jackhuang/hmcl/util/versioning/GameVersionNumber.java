@@ -157,7 +157,7 @@ public abstract sealed class GameVersionNumber implements Comparable<GameVersion
         return isAtLeast(releaseVersion, snapshotVersion, false);
     }
 
-    /// When comparing between Release Version and Snapshot Version, it is necessary to load `/assets/game/versions.txt` and perform a lookup, which is less efficient.
+    /// When comparing between Release Version and Snapshot Version, it is necessary to load `/hmcl/game/versions.txt` and perform a lookup, which is less efficient.
     /// Therefore, when checking whether a version contains a certain feature, you should use this method and provide both the first release version and the exact snapshot version that introduced the feature,
     /// so that the comparison can be performed quickly without a lookup.
     ///
@@ -854,9 +854,9 @@ public abstract sealed class GameVersionNumber implements Comparable<GameVersion
             List<LegacySnapshot> snapshots = new ArrayList<>(1024);
             List<Release> snapshotPrev = new ArrayList<>(1024);
 
-            var versionsStream = GameVersionNumber.class.getResourceAsStream("/assets/game/versions.txt");
+            var versionsStream = GameVersionNumber.class.getResourceAsStream("/hmcl/game/versions.txt");
             if (versionsStream == null) {
-                throw new AssertionError("Missing classpath resource /assets/game/versions.txt (package under src/main/resources/assets/game/)");
+                throw new AssertionError("Missing classpath resource /hmcl/game/versions.txt (package under src/main/resources/hmcl/game/)");
             }
             try (var reader = new BufferedReader(new InputStreamReader(versionsStream, StandardCharsets.US_ASCII))) {
                 Release currentRelease = null;
@@ -893,9 +893,9 @@ public abstract sealed class GameVersionNumber implements Comparable<GameVersion
                 throw new AssertionError(e);
             }
 
-            var aliasStream = GameVersionNumber.class.getResourceAsStream("/assets/game/version-alias.csv");
+            var aliasStream = GameVersionNumber.class.getResourceAsStream("/hmcl/game/version-alias.csv");
             if (aliasStream == null) {
-                throw new AssertionError("Missing classpath resource /assets/game/version-alias.csv (package under src/main/resources/assets/game/)");
+                throw new AssertionError("Missing classpath resource /hmcl/game/version-alias.csv (package under src/main/resources/hmcl/game/)");
             }
             try (var reader = new BufferedReader(new InputStreamReader(aliasStream, StandardCharsets.US_ASCII))) {
                 for (String line; (line = reader.readLine()) != null; ) {
