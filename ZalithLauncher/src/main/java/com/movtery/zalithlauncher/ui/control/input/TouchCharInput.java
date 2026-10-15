@@ -27,14 +27,30 @@ public class TouchCharInput extends androidx.appcompat.widget.AppCompatEditText 
     }
 
 
+    private static TouchCharInput sActiveInput;
     private boolean mIsDoingInternalChanges = false;
     private InputListener mListener;
 
     public void enableKeyboard() {
         InputMethodManager imm = (InputMethodManager) getContext().getSystemService(INPUT_METHOD_SERVICE);
         enable();
+        sActiveInput = this;
         imm.showSoftInput(this, InputMethodManager.SHOW_IMPLICIT);
         clear();
+    }
+
+    /** Used by SDL IME path (SdlImeController) when game takes over text input. */
+    public static void disableActiveInput() {
+        if (sActiveInput != null) {
+            InputMethodManager imm = (InputMethodManager) sActiveInput.getContext().getSystemService(INPUT_METHOD_SERVICE);
+            imm.hideSoftInputFromWindow(sActiveInput.getWindowToken(), 0);
+            sActiveInput.clear();
+            sActiveInput = null;
+        }
+    }
+
+    public static boolean isActive() {
+        return sActiveInput != null;
     }
 
     /**
