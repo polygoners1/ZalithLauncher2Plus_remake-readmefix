@@ -25,5 +25,7 @@ enum class Components(val component: String, val displayName: String, val summar
     CACIOCAVALLO("caciocavallo", "caciocavallo", R.string.unpack_screen_cacio),
     CACIOCAVALLO17("caciocavallo17", "caciocavallo 17", R.string.unpack_screen_cacio),
     LWJGL3("lwjgl3", "LWJGL 3.3.6", R.string.unpack_screen_lwjgl),
+    /** Official Android LWJGL 3.4.1 (SDL in merged-modules) for Minecraft 26.3+ */
+    LWJGL341("lwjgl/3.4.1", "LWJGL 3.4.1", R.string.unpack_screen_lwjgl),
     LAUNCHER("launcher", "Launcher Components", R.string.unpack_screen_launcher)
 }

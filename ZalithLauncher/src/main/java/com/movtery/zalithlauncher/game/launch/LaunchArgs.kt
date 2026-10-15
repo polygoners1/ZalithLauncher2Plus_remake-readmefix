@@ -155,11 +155,23 @@ class LaunchArgs(
         }
     }
 
-    private fun getLWJGL3ClassPath(): String =
-        File(PathManager.DIR_COMPONENTS, "lwjgl3")
-            .listFiles { file -> file.name.endsWith(".jar") }
+    private fun getLWJGL3ClassPath(): String {
+        // MC 26.3+ (SDL) needs Android LWJGL 3.4.1 (SDL lives in merged-modules jar)
+        val prefer341 = gameManifest.libraries.usesLwjglSdl()
+        val dir341 = File(PathManager.DIR_COMPONENTS, "lwjgl/3.4.1")
+        val dir333 = File(PathManager.DIR_COMPONENTS, "lwjgl3")
+        val dir = if (prefer341 && dir341.isDirectory) dir341 else dir333
+        return dir.listFiles { file -> file.name.endsWith(".jar") }
+            ?.sortedBy { file ->
+                when {
+                    file.name == "lwjgl.jar" -> 0
+                    file.name.contains("merged-modules") -> 1
+                    else -> 2
+                }
+            }
             ?.joinToString(":") { it.absolutePath }
             ?: ""
+    }
 
     private fun getJavaArgs(): List<String> {
         val argsList: MutableList<String> = ArrayList()
