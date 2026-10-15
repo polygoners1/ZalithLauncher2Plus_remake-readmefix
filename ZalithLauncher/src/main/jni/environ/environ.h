@@ -45,13 +45,19 @@ struct pojav_environ_s {
     jmethodID method_onGrabStateChanged;
     jmethodID method_onCursorShapeChanged;
     jmethodID method_onGraphicOutput;
+    jmethodID method_onDirectInputEnable;
     jmethodID method_glftSetWindowAttrib;
     jmethodID method_internalWindowSizeChanged;
+    jmethodID method_notifyLauncher;
     jclass bridgeClazz;
     jclass vmGlfwClass;
     jboolean isGrabbing;
     jbyte* keyDownBuffer;
     jbyte* mouseDownBuffer;
+    struct {
+        unsigned char buttons[15];
+        float axes[6];
+    } gamepadState;
     JavaVM* runtimeJavaVMPtr;
     JNIEnv* runtimeJNIEnvPtr_JRE;
     JavaVM* dalvikJavaVMPtr;

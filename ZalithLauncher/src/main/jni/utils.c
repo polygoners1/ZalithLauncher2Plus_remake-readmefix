@@ -144,3 +144,29 @@ JNIEXPORT void JNICALL Java_com_movtery_zalithlauncher_bridge_ZLBridge_fpsLimitS
 	}
 }
 
+
+
+JNIEnv* get_attached_env(JavaVM* jvm) {
+    if (jvm == NULL) return NULL;
+    JNIEnv *env = NULL;
+    jint status = (*jvm)->GetEnv(jvm, (void**)&env, JNI_VERSION_1_4);
+    if (status == JNI_OK) return env;
+    if (status == JNI_EDETACHED) {
+        if ((*jvm)->AttachCurrentThread(jvm, (void**)&env, NULL) == JNI_OK) {
+            return env;
+        }
+    }
+    return NULL;
+}
+
+jintArray convertIntArrayJVM(JNIEnv* srcEnv, JNIEnv* dstEnv, jintArray srcIntArray) {
+    if (srcIntArray == NULL) {
+        return NULL;
+    }
+    jsize len = (*srcEnv)->GetArrayLength(srcEnv, srcIntArray);
+    jint* srcPtr = (*srcEnv)->GetIntArrayElements(srcEnv, srcIntArray, NULL);
+    jintArray dstIntArray = (*dstEnv)->NewIntArray(dstEnv, len);
+    (*dstEnv)->SetIntArrayRegion(dstEnv, dstIntArray, 0, len, srcPtr);
+    (*srcEnv)->ReleaseIntArrayElements(srcEnv, srcIntArray, srcPtr, JNI_ABORT);
+    return dstIntArray;
+}

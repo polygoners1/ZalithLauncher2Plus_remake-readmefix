@@ -15,6 +15,7 @@ import androidx.annotation.Nullable;
 import com.movtery.inputmap.keycodes.LwjglGlfwKeycode;
 import com.movtery.zalithlauncher.BuildKeys;
 import com.movtery.zalithlauncher.bridge.CursorShape;
+import com.movtery.zalithlauncher.bridge.LoggerBridge;
 import com.movtery.zalithlauncher.bridge.NativeLibraryLoader;
 import com.movtery.zalithlauncher.bridge.ZLBridgeStates;
 import com.movtery.zalithlauncher.bridge.ZLNativeInvoker;
@@ -295,6 +296,50 @@ public class CallbackBridge {
     @Keep @CriticalNative private static native void nativeSendScreenSize(int width, int height);
     @Keep public static native void nativeSetWindowAttrib(int attrib, int value);
     @Keep public static native int getCurrentFps();
+
+
+    // SDL launcher integration (MC 26.x / LWJGL 3.4.1) — matches official ZalithLauncher2
+    public static final int NOTIF_TYPE_SDL = 0;
+    public static final int ACTION_INIT_LAUNCHER_INTEGRATION = 0;
+    public static final int SDL = NOTIF_TYPE_SDL;
+    public static final int INIT = ACTION_INIT_LAUNCHER_INTEGRATION;
+
+    /**
+     * Called from game JVM via JNI nativeNotifyLauncher. Loads SDL for MC 26.x SDL_Init path.
+     */
+    @Keep
+    public static boolean notifyLauncher(int type, int... action) {
+        try {
+            if (action == null || action.length == 0) {
+                LoggerBridge.append("ZalithLauncher: SDL notification has no action");
+                return false;
+            }
+            if (type == NOTIF_TYPE_SDL && action[0] == ACTION_INIT_LAUNCHER_INTEGRATION) {
+                LoggerBridge.append("ZalithLauncher: loading SDL3 for MC SDL path");
+                try {
+                    System.loadLibrary("SDL3");
+                } catch (UnsatisfiedLinkError e) {
+                    LoggerBridge.append("ZalithLauncher: SDL3 load failed: " + e.getMessage());
+                    return false;
+                }
+                try {
+                    System.loadLibrary("SDL2");
+                } catch (UnsatisfiedLinkError ignored) {
+                }
+                LoggerBridge.append("ZalithLauncher: SDL support enabled (minimal)");
+                return true;
+            }
+        } catch (Throwable t) {
+            LoggerBridge.append("ZalithLauncher: SDL launcher integration failed: " + t);
+            return false;
+        }
+        return false;
+    }
+
+    @Keep
+    private static void onDirectInputEnable() {
+        // Hook for direct gamepad path (full DirectGamepad port optional)
+    }
 
     static {
         NativeLibraryLoader.loadPojavLib();
