@@ -162,12 +162,9 @@ class LaunchArgs(
         val dir333 = File(PathManager.DIR_COMPONENTS, "lwjgl3")
         val dir = if (prefer341 && dir341.isDirectory) dir341 else dir333
         return dir.listFiles { file -> file.name.endsWith(".jar") }
-            // Official: skip lwjglx (LWJGL2 bridge) and vulkan for non-LWJGL2
-            // lwjglx pulls GLFW.nativeInitializeGLFWNativeBridge → UnsatisfiedLinkError + SIGSEGV
-            ?.filter { file ->
-                val n = file.name
-                n != "lwjgl-lwjglx.jar" && n != "lwjgl-vulkan.jar"
-            }
+            // Skip LWJGL2 bridge only. lwjgl-vulkan.jar is REQUIRED on 3.4.1:
+            // MC 26.x ClientBootstrap touches org.lwjgl.vulkan.* even for OpenGL.
+            ?.filter { file -> file.name != "lwjgl-lwjglx.jar" }
             ?.sortedBy { file ->
                 when {
                     file.name == "lwjgl.jar" -> 0
@@ -278,13 +275,12 @@ class LaunchArgs(
             ))
         }
         val vulkanStub = vulkanStubFile.absolutePath
-        // SDL 绑定依赖同版本的 LWJGL Core，优先加载后再回退到启动器的 Android 兼容实现。
-        // Always prefer Android LWJGL components (matches liblwjgl.so).
-        // Mojang 3.4.3 jars are filtered out — they call MemoryUtil.ngetPageSize() missing in natives.
+        // LWJGL 3.4.1 (MC 26.x / SDL): use real lwjgl-vulkan.jar from components.
+        // Stub only for older paths — it shadows VK.create() / VkPhysicalDeviceProperties2.
         val launchClassPath = if (gameManifest.libraries.usesLwjglSdl()) {
-            "$vulkanStub:$lwjglClassPath:$gameClassPath"
-        } else {
             "$lwjglClassPath:$gameClassPath"
+        } else {
+            "$vulkanStub:$lwjglClassPath:$gameClassPath"
         }
         var hasClasspath = false //是否已经在jvm参数中包含 ${classpath} 配置
 
