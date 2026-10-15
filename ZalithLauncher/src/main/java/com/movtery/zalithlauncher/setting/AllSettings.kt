@@ -696,4 +696,9 @@ object AllSettings : SettingsRegistry() {
      */
     val autoVulkanChecker = boolSetting("autoVulkanChecker", true)
 
+    /**
+     * SDL 下是否允许自动唤起输入法
+     */
+    val sdlAutoShowIme = boolSetting("sdlAutoShowIme", true)
+
 }

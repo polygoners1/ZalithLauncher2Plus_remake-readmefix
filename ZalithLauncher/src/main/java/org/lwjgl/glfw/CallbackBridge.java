@@ -16,6 +16,11 @@ import com.movtery.inputmap.keycodes.LwjglGlfwKeycode;
 import com.movtery.zalithlauncher.BuildKeys;
 import com.movtery.zalithlauncher.bridge.CursorShape;
 import com.movtery.zalithlauncher.bridge.LoggerBridge;
+import java.io.StringWriter;
+import java.io.PrintWriter;
+import org.libsdl.app.SDLSurface;
+import org.libsdl.app.SDLActivity;
+import com.movtery.zalithlauncher.game.sdl.SdlBridge;
 import com.movtery.zalithlauncher.bridge.NativeLibraryLoader;
 import com.movtery.zalithlauncher.bridge.ZLBridgeStates;
 import com.movtery.zalithlauncher.bridge.ZLNativeInvoker;
@@ -301,11 +306,16 @@ public class CallbackBridge {
     // SDL launcher integration (MC 26.x / LWJGL 3.4.1) — matches official ZalithLauncher2
     public static final int NOTIF_TYPE_SDL = 0;
     public static final int ACTION_INIT_LAUNCHER_INTEGRATION = 0;
+    public static final int ACTION_SEND_TEXTBOX_RECT = 1;
     public static final int SDL = NOTIF_TYPE_SDL;
     public static final int INIT = ACTION_INIT_LAUNCHER_INTEGRATION;
 
+    public static volatile int windowWidth, windowHeight;
+    public static volatile int physicalWidth, physicalHeight;
+
     /**
-     * Called from game JVM via JNI nativeNotifyLauncher. Loads SDL for MC 26.x SDL_Init path.
+     * Called from game JVM via JNI nativeNotifyLauncher.
+     * Loads SDL natives, runs SdlBridge.setupJNI, binds surface when available.
      */
     @Keep
     public static boolean notifyLauncher(int type, int... action) {
@@ -314,20 +324,40 @@ public class CallbackBridge {
                 LoggerBridge.append("ZalithLauncher: SDL notification has no action");
                 return false;
             }
-            if (type == NOTIF_TYPE_SDL && action[0] == ACTION_INIT_LAUNCHER_INTEGRATION) {
-                LoggerBridge.append("ZalithLauncher: loading SDL3 for MC SDL path");
-                try {
-                    System.loadLibrary("SDL3");
-                } catch (UnsatisfiedLinkError e) {
-                    LoggerBridge.append("ZalithLauncher: SDL3 load failed: " + e.getMessage());
-                    return false;
+            if (type == NOTIF_TYPE_SDL) {
+                if (action[0] == ACTION_INIT_LAUNCHER_INTEGRATION) {
+                    if (!SdlBridge.markSdlInitialized()) {
+                        return true; // already initialized
+                    }
+                    try {
+                        LoggerBridge.append("ZalithLauncher: loading SDL3");
+                        System.loadLibrary("SDL3");
+                        try {
+                            System.loadLibrary("SDL2");
+                        } catch (UnsatisfiedLinkError ignored) {
+                        }
+                        LoggerBridge.append("ZalithLauncher: setting up SDL JNI");
+                        SdlBridge.setupJNI();
+                        LoggerBridge.append("ZalithLauncher: binding SDL surface");
+                        SdlBridge.setSdlEnabled(true);
+                        SDLSurface surface = SDLActivity.getSDLSurface();
+                        if (surface != null) {
+                            surface.surfaceChanged();
+                            if (windowWidth > 0 && windowHeight > 0) {
+                                surface.nativeResize(windowWidth, windowHeight);
+                            }
+                        }
+                        LoggerBridge.append("ZalithLauncher: SDL support enabled!");
+                        return true;
+                    } catch (Throwable e) {
+                        SdlBridge.setSdlEnabled(false);
+                        SdlBridge.clearSdlInitialized();
+                        StringWriter trace = new StringWriter();
+                        e.printStackTrace(new PrintWriter(trace));
+                        LoggerBridge.append("ZalithLauncher: SDL launcher integration is unavailable:\n" + trace);
+                        return false;
+                    }
                 }
-                try {
-                    System.loadLibrary("SDL2");
-                } catch (UnsatisfiedLinkError ignored) {
-                }
-                LoggerBridge.append("ZalithLauncher: SDL support enabled (minimal)");
-                return true;
             }
         } catch (Throwable t) {
             LoggerBridge.append("ZalithLauncher: SDL launcher integration failed: " + t);
@@ -337,9 +367,15 @@ public class CallbackBridge {
     }
 
     @Keep
-    private static void onDirectInputEnable() {
-        // Hook for direct gamepad path (full DirectGamepad port optional)
+    public static void clearSdlBridgeState() {
+        // Reserved for input path reset when SDL session ends
     }
+
+    @Keep
+    private static void onDirectInputEnable() {
+        // Optional direct gamepad enable hook
+    }
+
 
     static {
         NativeLibraryLoader.loadPojavLib();

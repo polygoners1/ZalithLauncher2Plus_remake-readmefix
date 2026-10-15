@@ -86,6 +86,7 @@ import com.movtery.zalithlauncher.game.path.getGameHome
 import com.movtery.zalithlauncher.game.multirt.RuntimesManager
 import com.movtery.zalithlauncher.game.plugin.PluginLoader
 import com.movtery.zalithlauncher.game.recorder.GameSurfaceRegistry
+import com.movtery.zalithlauncher.game.sdl.SdlBridge
 import com.movtery.zalithlauncher.game.renderer.Renderers
 import com.movtery.zalithlauncher.game.renderer.renderers.KopperZinkRenderer
 import com.movtery.zalithlauncher.game.version.installed.PlayTimeRepository
@@ -658,6 +659,15 @@ class VMActivity : BaseAppCompatActivity(), SurfaceTextureListener, SurfaceHolde
     }
 
     override fun onSurfaceTextureAvailable(surface: SurfaceTexture, width: Int, height: Int) {
+        runCatching {
+            val native = android.view.Surface(surface)
+            SdlBridge.prepareSurface(
+                this,
+                native,
+                gameSurfaceView?.parent as? android.view.ViewGroup,
+                surface
+            )
+        }
         if (vmViewModel.isRunning) {
             ZLBridge.setupBridgeWindow(Surface(surface))
             return
@@ -700,6 +710,15 @@ class VMActivity : BaseAppCompatActivity(), SurfaceTextureListener, SurfaceHolde
     override fun surfaceCreated(holder: SurfaceHolder) {
         surfaceGeneration++
         pendingNewSurface?.complete(holder.surface)
+        // MC 26.x SDL path needs Android Surface registered before SDL_Init
+        runCatching {
+            SdlBridge.prepareSurface(
+                this,
+                holder.surface,
+                gameSurfaceView?.parent as? android.view.ViewGroup,
+                holder
+            )
+        }
         if (vmViewModel.isRunning) {
             ZLBridge.setupBridgeWindow(holder.surface)
             return
@@ -738,6 +757,12 @@ class VMActivity : BaseAppCompatActivity(), SurfaceTextureListener, SurfaceHolde
     }
 
     override fun surfaceDestroyed(holder: SurfaceHolder) {
+        runCatching {
+            val native = holder.surface
+            if (SdlBridge.beginSurfaceDestroy(holder, native)) {
+                SdlBridge.unregisterSurface(native)
+            }
+        }
         withHandler { mIsSurfaceDestroyed = true }
     }
 
