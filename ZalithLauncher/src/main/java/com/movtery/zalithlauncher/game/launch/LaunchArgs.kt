@@ -162,6 +162,12 @@ class LaunchArgs(
         val dir333 = File(PathManager.DIR_COMPONENTS, "lwjgl3")
         val dir = if (prefer341 && dir341.isDirectory) dir341 else dir333
         return dir.listFiles { file -> file.name.endsWith(".jar") }
+            // Official: skip lwjglx (LWJGL2 bridge) and vulkan for non-LWJGL2
+            // lwjglx pulls GLFW.nativeInitializeGLFWNativeBridge → UnsatisfiedLinkError + SIGSEGV
+            ?.filter { file ->
+                val n = file.name
+                n != "lwjgl-lwjglx.jar" && n != "lwjgl-vulkan.jar"
+            }
             ?.sortedBy { file ->
                 when {
                     file.name == "lwjgl.jar" -> 0
