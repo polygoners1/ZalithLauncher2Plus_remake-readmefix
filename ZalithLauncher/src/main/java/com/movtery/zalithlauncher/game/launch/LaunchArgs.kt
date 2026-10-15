@@ -261,8 +261,10 @@ class LaunchArgs(
         }
         val vulkanStub = vulkanStubFile.absolutePath
         // SDL 绑定依赖同版本的 LWJGL Core，优先加载后再回退到启动器的 Android 兼容实现。
+        // Always prefer Android LWJGL components (matches liblwjgl.so).
+        // Mojang 3.4.3 jars are filtered out — they call MemoryUtil.ngetPageSize() missing in natives.
         val launchClassPath = if (gameManifest.libraries.usesLwjglSdl()) {
-            "$vulkanStub:$gameClassPath:$lwjglClassPath"
+            "$vulkanStub:$lwjglClassPath:$gameClassPath"
         } else {
             "$lwjglClassPath:$gameClassPath"
         }

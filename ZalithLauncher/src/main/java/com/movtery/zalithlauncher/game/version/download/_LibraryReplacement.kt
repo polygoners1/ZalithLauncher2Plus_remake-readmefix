@@ -87,30 +87,18 @@ fun GameManifest.Library.filterLibrary(
     allowVulkan: Boolean = false
 ): Boolean {
     val libraryName = name ?: return false
-    val coordinates = libraryName.split(":")
-    val group = coordinates.getOrNull(0)
-    val artifact = coordinates.getOrNull(1)
 
     if (libraryName.contains("jinput-platform") || libraryName.contains("twitch-platform")) {
         return true
     }
 
-    if (group != "org.lwjgl") {
-        return false
-    }
-
-    // Default OFF: filter lwjgl-vulkan (Vulkan bootstrap causes SIGSEGV in libpojavexec on Android)
-    if (!allowVulkan && artifact == "lwjgl-vulkan") {
+    // Always filter Mojang/desktop LWJGL (Java + natives).
+    // Android uses components/lwjgl3 (and liblwjgl.so) instead — Mojang 3.4.3
+    // MemoryUtil.ngetPageSize() does not exist in Android natives (UnsatisfiedLinkError).
+    // allowLwjglSdlClasses is kept for API compat but no longer keeps Mojang core/sdl jars.
+    if (libraryName.contains("org.lwjgl")) {
         return true
     }
 
-    val isLwjglSdlClasses = coordinates.size == 3 &&
-        (artifact == "lwjgl" || artifact == "lwjgl-sdl") &&
-        !isNative
-
-    if (allowLwjglSdlClasses && isLwjglSdlClasses) {
-        return false
-    }
-
-    return true
+    return false
 }
