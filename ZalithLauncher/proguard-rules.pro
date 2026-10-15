@@ -74,3 +74,13 @@
 
 # Libraries
 -keep class com.github.steveice10.opennbt.** { *; }
+
+# Minecraft 26.x / LWJGL 3.4.1 SDL Android bridge — JNI_OnLoad FindClass needs these
+-keep class org.libsdl.app.** { *; }
+-keep class com.movtery.zalithlauncher.game.sdl.** { *; }
+-keepclassmembers class org.lwjgl.glfw.CallbackBridge {
+    public static boolean notifyLauncher(int, int[]);
+    public static void clearSdlBridgeState();
+    public static int windowWidth;
+    public static int windowHeight;
+}

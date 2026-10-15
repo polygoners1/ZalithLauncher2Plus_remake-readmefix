@@ -365,6 +365,9 @@ class VMActivity : BaseAppCompatActivity(), SurfaceTextureListener, SurfaceHolde
     override fun onCreate(savedInstanceState: Bundle?) {
         requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
         super.onCreate(savedInstanceState)
+        // Preload SDL on the app main thread (app ClassLoader) before the game JVM starts.
+        // Avoids SIGSEGV in libSDL3 JNI_OnLoad when loaded from a Hotspot-attached ART thread.
+        runCatching { SdlBridge.preloadNatives() }
         //加载渲染器
         Renderers.init()
         //加载插件

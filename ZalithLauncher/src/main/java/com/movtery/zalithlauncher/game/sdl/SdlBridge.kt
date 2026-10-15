@@ -57,11 +57,44 @@ object SdlBridge {
     private var jniReady = false
     private var sdlInitialized = false
 
+    @Volatile
+    private var nativesLoaded = false
+
+    /**
+     * Load libSDL3/libSDL2 on the Android (Dalvik) side with the app ClassLoader.
+     * Must run on a real app thread (preferably main), NEVER from a Hotspot-attached JNI thread.
+     */
+    @JvmStatic
+    @Synchronized
+    fun preloadNatives(): Boolean {
+        if (nativesLoaded) return true
+        return try {
+            System.loadLibrary("SDL3")
+            try {
+                System.loadLibrary("SDL2")
+            } catch (_: UnsatisfiedLinkError) {
+                // optional
+            }
+            // Force-resolve Java classes before JNI_OnLoad peers look them up again
+            Class.forName("org.libsdl.app.SDLActivity")
+            Class.forName("org.libsdl.app.SDL")
+            Class.forName("org.libsdl.app.SDLSurface")
+            nativesLoaded = true
+            true
+        } catch (t: Throwable) {
+            android.util.Log.e("SdlBridge", "preloadNatives failed", t)
+            false
+        }
+    }
+
     @JvmStatic
     @Synchronized
     fun setupJNI(): Boolean {
         if (jniReady) {
             return true
+        }
+        if (!preloadNatives()) {
+            return false
         }
         SDL.setupJNI()
         jniReady = true
@@ -99,6 +132,7 @@ object SdlBridge {
     @JvmStatic
     @MainThread
     fun prepareSurface(activity: Activity, surface: Surface, layout: ViewGroup?, source: Any? = null) {
+        preloadNatives()
         activityRef = WeakReference(activity)
         layoutRef = WeakReference(layout)
         currentSurface = surface
