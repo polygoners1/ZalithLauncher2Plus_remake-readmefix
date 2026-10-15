@@ -262,7 +262,7 @@ class LaunchArgs(
         val vulkanStub = vulkanStubFile.absolutePath
         // SDL 绑定依赖同版本的 LWJGL Core，优先加载后再回退到启动器的 Android 兼容实现。
         val launchClassPath = if (gameManifest.libraries.usesLwjglSdl()) {
-            "$vulkanStub:$lwjglClassPath:$gameClassPath"
+            "$vulkanStub:$gameClassPath:$lwjglClassPath"
         } else {
             "$lwjglClassPath:$gameClassPath"
         }
