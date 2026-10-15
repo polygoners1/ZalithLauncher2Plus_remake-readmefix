@@ -17,6 +17,9 @@ import com.movtery.zalithlauncher.BuildKeys;
 import com.movtery.zalithlauncher.bridge.CursorShape;
 import com.movtery.zalithlauncher.bridge.LoggerBridge;
 import java.io.StringWriter;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+import java.nio.FloatBuffer;
 import java.io.PrintWriter;
 import org.libsdl.app.SDLSurface;
 import org.libsdl.app.SDLActivity;
@@ -55,6 +58,19 @@ public class CallbackBridge {
     
     public static volatile int windowWidth, windowHeight;
     public static volatile int physicalWidth, physicalHeight;
+
+    // GLFW direct gamepad shared buffers (used by DirectGamepad / official SDL path)
+    public static final ByteBuffer sGamepadButtonBuffer;
+    public static final FloatBuffer sGamepadAxisBuffer;
+    public static boolean sGamepadDirectInput = false;
+    public static boolean sGamepadDirectEnabled = false;
+
+    static {
+        sGamepadButtonBuffer = ByteBuffer.allocateDirect(15).order(ByteOrder.nativeOrder());
+        sGamepadAxisBuffer = ByteBuffer.allocateDirect(6 * 4).order(ByteOrder.nativeOrder()).asFloatBuffer();
+    }
+
+
     public static float mouseX, mouseY;
     public volatile static boolean holdingAlt, holdingCapslock, holdingCtrl,
             holdingNumlock, holdingShift;
@@ -310,10 +326,7 @@ public class CallbackBridge {
     public static final int SDL = NOTIF_TYPE_SDL;
     public static final int INIT = ACTION_INIT_LAUNCHER_INTEGRATION;
 
-    public static volatile int windowWidth, windowHeight;
-    public static volatile int physicalWidth, physicalHeight;
-
-    /**
+        /**
      * Called from game JVM via JNI nativeNotifyLauncher.
      * Loads SDL natives, runs SdlBridge.setupJNI, binds surface when available.
      */

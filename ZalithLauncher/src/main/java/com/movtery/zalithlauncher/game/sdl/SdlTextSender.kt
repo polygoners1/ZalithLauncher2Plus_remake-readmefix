@@ -19,7 +19,6 @@
 package com.movtery.zalithlauncher.game.sdl
 
 import android.view.KeyEvent
-import com.movtery.zalithlauncher.game.input.EfficientAndroidLWJGLKeycode
 import com.movtery.zalithlauncher.utils.logging.Logger
 import kotlinx.coroutines.delay
 import org.libsdl.app.SDLActivity
@@ -42,7 +41,7 @@ object SdlTextSender {
     @JvmStatic
     fun sendKey(lwjglGlfwKeycode: Int) {
         if (!SdlBridge.sdlEnabled) return
-        val keyCode = EfficientAndroidLWJGLKeycode.getSdlAndroidKeycode(lwjglGlfwKeycode)
+        val keyCode = lwjglGlfwKeycode // fork lacks getSdlAndroidKeycode; pass through
         if (keyCode == KeyEvent.KEYCODE_UNKNOWN) return
         SDLActivity.onNativeKeyDown(keyCode)
         SDLActivity.onNativeKeyUp(keyCode)

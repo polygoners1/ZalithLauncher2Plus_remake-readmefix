@@ -664,7 +664,7 @@ class VMActivity : BaseAppCompatActivity(), SurfaceTextureListener, SurfaceHolde
             SdlBridge.prepareSurface(
                 this,
                 native,
-                gameSurfaceView?.parent as? android.view.ViewGroup,
+                null,
                 surface
             )
         }
@@ -715,7 +715,7 @@ class VMActivity : BaseAppCompatActivity(), SurfaceTextureListener, SurfaceHolde
             SdlBridge.prepareSurface(
                 this,
                 holder.surface,
-                gameSurfaceView?.parent as? android.view.ViewGroup,
+                null,
                 holder
             )
         }
