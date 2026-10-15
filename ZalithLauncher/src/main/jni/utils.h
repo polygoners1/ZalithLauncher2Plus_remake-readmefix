@@ -6,15 +6,6 @@
 #define CLIPBOARD_PASTE 2001
 #define CLIPBOARD_OPEN 2002
 
-char** convert_to_char_array(JNIEnv *env, jobjectArray jstringArray);
-jobjectArray convert_from_char_array(JNIEnv *env, char **charArray, int num_rows);
-void free_char_array(JNIEnv *env, jobjectArray jstringArray, const char **charArray);
-jstring convertStringJVM(JNIEnv* srcEnv, JNIEnv* dstEnv, jstring srcStr);
-
-void hookExec();
-void installLwjglDlopenHook();
-void installEMUIIteratorMititgation();
-JNIEXPORT jstring JNICALL Java_org_lwjgl_glfw_CallbackBridge_nativeClipboard(JNIEnv* env, jclass clazz, jint action, jbyteArray copySrc)
 #define TRY_ATTACH_ENV(env_name, vm, error_message, then) JNIEnv* env_name;\
 do {                                                                       \
     env_name = get_attached_env(vm);                                       \
@@ -24,7 +15,15 @@ do {                                                                       \
     }                                                                      \
 } while(0)
 
-JNIEnv* get_attached_env(JavaVM* jvm);
+char** convert_to_char_array(JNIEnv *env, jobjectArray jstringArray);
+jobjectArray convert_from_char_array(JNIEnv *env, char **charArray, int num_rows);
+void free_char_array(JNIEnv *env, jobjectArray jstringArray, const char **charArray);
+jstring convertStringJVM(JNIEnv* srcEnv, JNIEnv* dstEnv, jstring srcStr);
 jintArray convertIntArrayJVM(JNIEnv* srcEnv, JNIEnv* dstEnv, jintArray srcIntArray);
 
-;
+JNIEnv* get_attached_env(JavaVM* jvm);
+
+void hookExec();
+void installLwjglDlopenHook();
+void installEMUIIteratorMititgation();
+JNIEXPORT jstring JNICALL Java_org_lwjgl_glfw_CallbackBridge_nativeClipboard(JNIEnv* env, jclass clazz, jint action, jbyteArray copySrc);
