@@ -69,6 +69,7 @@ object SdlBridge {
     fun preloadNatives(): Boolean {
         if (nativesLoaded) return true
         return try {
+            android.util.Log.i("SdlBridge", "preloadNatives: resolving org.libsdl.app classes")
             // JNI_OnLoad of libSDL3 registers natives via FindClass — classes MUST
             // be resolvable BEFORE System.loadLibrary, otherwise nativeSetupJNI ULE.
             Class.forName("org.libsdl.app.SDLActivity")
@@ -77,6 +78,7 @@ object SdlBridge {
             Class.forName("org.libsdl.app.SDLAudioManager")
             Class.forName("org.libsdl.app.SDLControllerManager")
             Class.forName("org.libsdl.app.HIDDeviceManager")
+            android.util.Log.i("SdlBridge", "preloadNatives: loading libSDL3")
             System.loadLibrary("SDL3")
             try {
                 System.loadLibrary("SDL2")
@@ -84,6 +86,7 @@ object SdlBridge {
                 // optional
             }
             nativesLoaded = true
+            android.util.Log.i("SdlBridge", "preloadNatives: OK")
             true
         } catch (t: Throwable) {
             android.util.Log.e("SdlBridge", "preloadNatives failed", t)
