@@ -63,6 +63,11 @@ object SdlBridge {
     @JvmStatic
     fun isNativesLoaded(): Boolean = nativesLoaded
 
+    @JvmStatic
+    fun markNativesLoaded() {
+        nativesLoaded = true
+    }
+
     /**
      * Load libSDL3/libSDL2 on the Android (Dalvik) side with the app ClassLoader.
      * Prefer calling from Application.onCreate (pure ART) before the game JVM starts.
@@ -102,12 +107,19 @@ object SdlBridge {
     fun setupJNI(): Boolean {
         // Official: only registers Java↔native methods; library must already be loaded
         // by CallbackBridge.notifyLauncher via System.loadLibrary.
+        // When JNI_OnLoad is skipped (ART SIGSEGV workaround), nativeSetupJNI is ULE —
+        // caller treats that as soft-fail and continues with C-level sdl_hook path.
         if (jniReady) {
             return true
         }
-        SDL.setupJNI()
-        jniReady = true
-        return true
+        return try {
+            SDL.setupJNI()
+            jniReady = true
+            true
+        } catch (t: Throwable) {
+            android.util.Log.w("SdlBridge", "setupJNI failed (OnLoad may have been skipped)", t)
+            false
+        }
     }
 
     @JvmStatic
