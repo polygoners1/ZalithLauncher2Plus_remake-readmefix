@@ -97,11 +97,10 @@ object SdlBridge {
     @JvmStatic
     @Synchronized
     fun setupJNI(): Boolean {
+        // Official: only registers Java↔native methods; library must already be loaded
+        // by CallbackBridge.notifyLauncher via System.loadLibrary.
         if (jniReady) {
             return true
-        }
-        if (!preloadNatives()) {
-            return false
         }
         SDL.setupJNI()
         jniReady = true
@@ -139,7 +138,7 @@ object SdlBridge {
     @JvmStatic
     @MainThread
     fun prepareSurface(activity: Activity, surface: Surface, layout: ViewGroup?, source: Any? = null) {
-        preloadNatives()
+        // Official does not load libSDL3 here — only notifyLauncher does.
         activityRef = WeakReference(activity)
         layoutRef = WeakReference(layout)
         currentSurface = surface
