@@ -680,3 +680,11 @@ static void registerFunctions(JNIEnv *env) {
                             use_critical_cc ? critical_fcns : noncritical_fcns,
                             sizeof(critical_fcns) / sizeof(critical_fcns[0]));
 }
+
+
+/* SDL primary window pointer for text-input / render-path detection (official) */
+typedef struct SDL_Window SDL_Window;
+static SDL_Window *sSdlPrimaryWindow = NULL;
+void sdlBridgeSetPrimaryWindow(struct SDL_Window *window) {
+    sSdlPrimaryWindow = window;
+}
