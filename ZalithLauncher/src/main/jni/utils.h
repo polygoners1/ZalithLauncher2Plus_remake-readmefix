@@ -24,6 +24,11 @@
 #define CLIPBOARD_PASTE 2001
 #define CLIPBOARD_OPEN 2002
 
+// SDL launcher integration (must match CallbackBridge / official)
+#define NOTIF_TYPE_SDL 0
+#define ACTION_INIT_LAUNCHER_INTEGRATION 0
+#define ACTION_SEND_TEXTBOX_RECT 1
+
 #define TRY_ATTACH_ENV(env_name, vm, error_message, then) JNIEnv* env_name;\
 do {                                                                       \
     env_name = get_attached_env(vm);                                       \
@@ -40,6 +45,9 @@ jstring convertStringJVM(JNIEnv* srcEnv, JNIEnv* dstEnv, jstring srcStr);
 jintArray convertIntArrayJVM(JNIEnv* srcEnv, JNIEnv* dstEnv, jintArray srcIntArray);
 
 JNIEnv* get_attached_env(JavaVM* jvm);
+
+/** Call CallbackBridge.notifyLauncher on the Dalvik side (SDL init path). */
+bool notifyLauncher(JNIEnv *dvm_env, int type, int actions[], int len);
 
 void hookExec();
 void installLwjglDlopenHook();
