@@ -42,6 +42,7 @@ void calculateFPS(void);
 void sdlBridgeSetPrimaryWindow(struct SDL_Window *window);
 
 DECL_DLSYM(SDL_InitSubSystem)
+DECL_DLSYM(SDL_SetMainReady)
 DECL_DLSYM(SDL_SetHint);
 DECL_DLSYM(SDL_SetTextInputArea);
 DECL_DLSYM(SDL_SetError);
@@ -380,6 +381,15 @@ static bool sdlInitSubSystemPrepare(SDL_InitFlags flags) {
     } else safeFlags = (jint)flags;
 
     notifyLauncher(dvm_env, NOTIF_TYPE_SDL, (int[]){ACTION_INIT_LAUNCHER_INTEGRATION, safeFlags}, 2);
+
+    // Without JNI_OnLoad, SDL_main is not marked ready — Init fails with SDL_main.h error.
+    {
+        SET_DLSYM_PTR(dlopen("libSDL3.so", RTLD_NOLOAD), SDL_SetMainReady);
+        if (SDL_SetMainReady_p) {
+            SDL_SetMainReady_p();
+            LOG_TO_I("SDL_Hook: SDL_SetMainReady() after notifyLauncher");
+        }
+    }
 
     // This is the normal for the launcher, the default in SDL is false.
     SET_DLSYM_PTR(dlopen("libSDL3.so", RTLD_NOLOAD), SDL_SetHint);

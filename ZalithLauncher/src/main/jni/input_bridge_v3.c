@@ -689,6 +689,17 @@ Java_com_movtery_zalithlauncher_game_sdl_SdlBridge_nativeDlopenSdlOnly(
     LOG_TO_I("SDL: dlopen(libSDL3.so) OK (no JNI_OnLoad)");
     /* Optional SDL2 for older bindings */
     dlopen("libSDL2.so", RTLD_NOW | RTLD_GLOBAL);
+
+    /* JNI_OnLoad normally calls SDL_SetMainReady(). Without it SDL_Init fails with
+     * "Application didn't initialize properly, did you include SDL_main.h...". */
+    typedef void (*SDL_SetMainReady_t)(void);
+    void *setMain = dlsym(handle, "SDL_SetMainReady");
+    if (setMain != NULL) {
+        ((SDL_SetMainReady_t) setMain)();
+        LOG_TO_I("SDL: SDL_SetMainReady() called after dlopen");
+    } else {
+        LOG_TO_E("SDL: SDL_SetMainReady not found in libSDL3");
+    }
     return JNI_TRUE;
 }
 
