@@ -60,16 +60,15 @@ object SdlBridge {
     @Volatile
     private var nativesLoaded = false
 
-    /**
-     * Load libSDL3/libSDL2 on the Android (Dalvik) side with the app ClassLoader.
-     * Must run on a real app thread (preferably main), NEVER from a Hotspot-attached JNI thread.
-     */
-    @JvmStatic
-    @Synchronized
     @JvmStatic
     fun isNativesLoaded(): Boolean = nativesLoaded
 
+    /**
+     * Load libSDL3/libSDL2 on the Android (Dalvik) side with the app ClassLoader.
+     * Prefer calling from Application.onCreate (pure ART) before the game JVM starts.
+     */
     @JvmStatic
+    @Synchronized
     fun preloadNatives(): Boolean {
         if (nativesLoaded) return true
         return try {
