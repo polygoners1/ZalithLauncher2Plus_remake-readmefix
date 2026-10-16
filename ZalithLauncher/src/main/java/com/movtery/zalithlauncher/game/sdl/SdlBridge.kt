@@ -66,6 +66,10 @@ object SdlBridge {
      */
     @JvmStatic
     @Synchronized
+    @JvmStatic
+    fun isNativesLoaded(): Boolean = nativesLoaded
+
+    @JvmStatic
     fun preloadNatives(): Boolean {
         if (nativesLoaded) return true
         return try {

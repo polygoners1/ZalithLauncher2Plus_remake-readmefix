@@ -43,6 +43,7 @@ import com.movtery.zalithlauncher.ui.activities.showLauncherCrash
 import com.movtery.zalithlauncher.game.version.mod.update.ModUpdateChecker
 import com.movtery.zalithlauncher.utils.device.Architecture
 import com.movtery.zalithlauncher.utils.logging.Logger
+import com.movtery.zalithlauncher.game.sdl.SdlBridge
 import com.movtery.zalithlauncher.utils.writeCrashFile
 import com.tencent.mmkv.MMKV
 import dagger.hilt.android.HiltAndroidApp
@@ -87,6 +88,18 @@ class ZLApplication : Application(), SingletonImageLoader.Factory {
             loadAllSettings(this)
 
             Logger.initialize(this)
+
+            // Load libSDL3 while the process is still pure ART (no Hotspot game JVM).
+            // System.loadLibrary after Hotspot starts goes through JVM_NativeLoad→ART and
+            // SIGSEGVs inside libSDL3 JNI_OnLoad on this device (see hs_err 2.5.25–2.5.27).
+            // Loading here registers natives once; later System.loadLibrary is a no-op.
+            runCatching {
+                if (SdlBridge.preloadNatives()) {
+                    Log.i("ZLApplication", "SDL3 preloaded at Application start (pure ART)")
+                } else {
+                    Log.w("ZLApplication", "SDL3 preload returned false at Application start")
+                }
+            }.onFailure { Log.e("ZLApplication", "SDL3 preload failed at Application start", it) }
 
             initializeData()
             PathManager.DIR_FILES_PRIVATE = getDir("files", MODE_PRIVATE)

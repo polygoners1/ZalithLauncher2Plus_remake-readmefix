@@ -367,8 +367,14 @@ public class CallbackBridge {
                     LoggerBridge.append("ZalithLauncher: SDL Java classes missing: " + cnf);
                     return;
                 }
-                LoggerBridge.append("ZalithLauncher: loading SDL3 (main thread)");
-                System.loadLibrary("SDL3");
+                // Prefer pure-ART preload from ZLApplication. If that ran, loadLibrary is a
+                // no-op (JNI_OnLoad will not run again). Still call for safety if preload failed.
+                if (SdlBridge.isNativesLoaded()) {
+                    LoggerBridge.append("ZalithLauncher: SDL3 already preloaded (skip loadLibrary)");
+                } else {
+                    LoggerBridge.append("ZalithLauncher: loading SDL3 (main thread, fallback)");
+                    System.loadLibrary("SDL3");
+                }
                 LoggerBridge.append("ZalithLauncher: loading SDL2");
                 try {
                     System.loadLibrary("SDL2");
