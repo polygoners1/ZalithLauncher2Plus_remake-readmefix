@@ -364,13 +364,13 @@ public class CallbackBridge {
                             return false;
                         }
 
-                        LoggerBridge.append("ZalithLauncher: loading SDL3");
-                        System.loadLibrary("SDL3");
-                        SdlBridge.markNativesLoaded();
-                        LoggerBridge.append("ZalithLauncher: loading SDL2");
-                        try {
-                            System.loadLibrary("SDL2");
-                        } catch (UnsatisfiedLinkError ignored) {
+                        // CRITICAL: do NOT System.loadLibrary("SDL3") — ART LoadNativeLibrary
+                        // invokes JNI_OnLoad and SIGSEGVs on this device (see hs_err 2.5.25–2.5.30).
+                        // Map the .so with dlopen only so LWJGL/sdl_hook can dlsym symbols.
+                        LoggerBridge.append("ZalithLauncher: mapping SDL3 via dlopen (no JNI_OnLoad)");
+                        if (!SdlBridge.ensureSdlLibraryMapped()) {
+                            LoggerBridge.append("ZalithLauncher: dlopen libSDL3 failed");
+                            return false;
                         }
 
                         LoggerBridge.append("ZalithLauncher: setting up SDL JNI");

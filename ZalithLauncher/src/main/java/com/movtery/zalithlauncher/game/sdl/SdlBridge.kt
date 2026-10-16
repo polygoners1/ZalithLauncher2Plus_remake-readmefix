@@ -69,6 +69,32 @@ object SdlBridge {
     }
 
     /**
+     * dlopen libSDL3 without ART System.loadLibrary / JNI_OnLoad (device SIGSEGV workaround).
+     * Implemented in pojavexec (input_bridge_v3.c).
+     */
+    @JvmStatic
+    private external fun nativeDlopenSdlOnly(): Boolean
+
+    /**
+     * Ensure libSDL3 is mapped. Prefer pure dlopen — never System.loadLibrary on this tree.
+     */
+    @JvmStatic
+    @Synchronized
+    fun ensureSdlLibraryMapped(): Boolean {
+        if (nativesLoaded) return true
+        return try {
+            val ok = nativeDlopenSdlOnly()
+            if (ok) {
+                nativesLoaded = true
+            }
+            ok
+        } catch (t: Throwable) {
+            android.util.Log.e("SdlBridge", "ensureSdlLibraryMapped failed", t)
+            false
+        }
+    }
+
+    /**
      * Load libSDL3/libSDL2 on the Android (Dalvik) side with the app ClassLoader.
      * Prefer calling from Application.onCreate (pure ART) before the game JVM starts.
      */

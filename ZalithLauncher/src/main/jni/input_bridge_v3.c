@@ -667,6 +667,31 @@ static bool tryCriticalNative(JNIEnv *env) {
     return criticalNativeAvailable;
 }
 
+
+
+/**
+ * Load libSDL3 into the process WITHOUT going through ART System.loadLibrary /
+ * JNI_OnLoad. On some devices (ZTE/Unisoc ART) JNI_OnLoad SIGSEGVs during FindClass.
+ * LWJGL and sdl_hook resolve symbols via dlsym after this dlopen.
+ */
+JNIEXPORT jboolean JNICALL
+Java_com_movtery_zalithlauncher_game_sdl_SdlBridge_nativeDlopenSdlOnly(
+        JNIEnv *env, jclass clazz) {
+    (void) env;
+    (void) clazz;
+    dlerror();
+    void *handle = dlopen("libSDL3.so", RTLD_NOW | RTLD_GLOBAL);
+    if (handle == NULL) {
+        const char *err = dlerror();
+        LOG_TO_E("SDL: dlopen(libSDL3.so) failed: %s", err ? err : "unknown");
+        return JNI_FALSE;
+    }
+    LOG_TO_I("SDL: dlopen(libSDL3.so) OK (no JNI_OnLoad)");
+    /* Optional SDL2 for older bindings */
+    dlopen("libSDL2.so", RTLD_NOW | RTLD_GLOBAL);
+    return JNI_TRUE;
+}
+
 static void registerFunctions(JNIEnv *env) {
     bool use_critical_cc = tryCriticalNative(env);
     jclass bridge_class = (*env)->FindClass(env, "org/lwjgl/glfw/CallbackBridge");
