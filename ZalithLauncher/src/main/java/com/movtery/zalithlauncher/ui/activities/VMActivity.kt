@@ -597,6 +597,10 @@ class VMActivity : BaseAppCompatActivity(), SurfaceTextureListener, SurfaceHolde
         GameSurfaceRegistry.unregister()
         stopAllService()
         withHandler { onDestroy() }
+        // Official: clear SDL session state so the next launch does not skip init
+        // with a dead Activity/Surface reference.
+        runCatching { SdlBridge.reset() }
+            .onFailure { LoggerBridge.append("ZalithLauncher: SdlBridge.reset failed: $it") }
         super.onDestroy()
     }
 
@@ -670,6 +674,8 @@ class VMActivity : BaseAppCompatActivity(), SurfaceTextureListener, SurfaceHolde
                 null,
                 surface
             )
+        }.onFailure {
+            LoggerBridge.append("ZalithLauncher: prepareSurface (TextureView) failed: $it")
         }
         if (vmViewModel.isRunning) {
             ZLBridge.setupBridgeWindow(Surface(surface))
@@ -721,6 +727,8 @@ class VMActivity : BaseAppCompatActivity(), SurfaceTextureListener, SurfaceHolde
                 null,
                 holder
             )
+        }.onFailure {
+            LoggerBridge.append("ZalithLauncher: prepareSurface (SurfaceView) failed: $it")
         }
         if (vmViewModel.isRunning) {
             ZLBridge.setupBridgeWindow(holder.surface)
