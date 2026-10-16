@@ -10,6 +10,11 @@ import android.content.Context;
 import android.view.Choreographer;
 
 import androidx.annotation.Keep;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.CountDownLatch;
+import android.os.Looper;
+import android.os.Handler;
 import androidx.annotation.Nullable;
 
 import com.movtery.inputmap.keycodes.LwjglGlfwKeycode;
@@ -332,9 +337,11 @@ public class CallbackBridge {
      */
     @Keep
     public static boolean notifyLauncher(int type, int... action) {
-        // Aligned with official ZalithLauncher2: load SDL on the calling Dalvik thread
-        // (invoked via CallStaticBooleanMethod from nativeNotifyLauncher). Do NOT post to
-        // main looper + await — that can deadlock / time out during early game start.
+        // Evidence (2.5.20 + hs_err 2.5.25):
+        // System.loadLibrary("SDL3") on the game Render thread SIGSEGVs inside ART JNI_OnLoad
+        // (libart.so). Loading on the Android main looper thread succeeds past JNI_OnLoad.
+        // Official also uses System.loadLibrary here, but this fork's Hotspot↔ART bridge
+        // requires the main-thread path. Class.forName must run before loadLibrary.
         if (action == null || action.length == 0) {
             LoggerBridge.append("ZalithLauncher: SDL notification has no action");
             return false;
@@ -345,47 +352,68 @@ public class CallbackBridge {
         if (!SdlBridge.markSdlInitialized()) {
             return true;
         }
+        final AtomicBoolean ok = new AtomicBoolean(false);
+        final CountDownLatch done = new CountDownLatch(1);
+        final Runnable work = () -> {
+            try {
+                try {
+                    Class.forName("org.libsdl.app.SDLActivity");
+                    Class.forName("org.libsdl.app.SDL");
+                    Class.forName("org.libsdl.app.SDLSurface");
+                    Class.forName("org.libsdl.app.SDLAudioManager");
+                    Class.forName("org.libsdl.app.SDLControllerManager");
+                    Class.forName("org.libsdl.app.HIDDeviceManager");
+                } catch (ClassNotFoundException cnf) {
+                    LoggerBridge.append("ZalithLauncher: SDL Java classes missing: " + cnf);
+                    return;
+                }
+                LoggerBridge.append("ZalithLauncher: loading SDL3 (main thread)");
+                System.loadLibrary("SDL3");
+                LoggerBridge.append("ZalithLauncher: loading SDL2");
+                try {
+                    System.loadLibrary("SDL2");
+                } catch (UnsatisfiedLinkError ignored) {
+                }
+                LoggerBridge.append("ZalithLauncher: setting up SDL JNI");
+                SdlBridge.setupJNI();
+                LoggerBridge.append("ZalithLauncher: binding SDL surface");
+                SdlBridge.setSdlEnabled(true);
+                SDLSurface surface = SDLActivity.getSDLSurface();
+                if (surface != null) {
+                    surface.surfaceChanged();
+                    if (windowWidth > 0 && windowHeight > 0) {
+                        surface.nativeResize(windowWidth, windowHeight);
+                    }
+                }
+                LoggerBridge.append("ZalithLauncher: SDL support enabled!");
+                ok.set(true);
+            } catch (Throwable e) {
+                SdlBridge.setSdlEnabled(false);
+                StringWriter trace = new StringWriter();
+                e.printStackTrace(new PrintWriter(trace));
+                LoggerBridge.append("ZalithLauncher: SDL launcher integration is unavailable:\n" + trace);
+            } finally {
+                if (!ok.get()) {
+                    SdlBridge.clearSdlInitialized();
+                }
+                done.countDown();
+            }
+        };
         try {
-            // Resolve Java classes before JNI_OnLoad RegisterNatives (extra safety vs official)
-            try {
-                Class.forName("org.libsdl.app.SDLActivity");
-                Class.forName("org.libsdl.app.SDL");
-                Class.forName("org.libsdl.app.SDLSurface");
-                Class.forName("org.libsdl.app.SDLAudioManager");
-                Class.forName("org.libsdl.app.SDLControllerManager");
-                Class.forName("org.libsdl.app.HIDDeviceManager");
-            } catch (ClassNotFoundException cnf) {
-                LoggerBridge.append("ZalithLauncher: SDL Java classes missing: " + cnf);
-                SdlBridge.clearSdlInitialized();
-                return false;
-            }
-            LoggerBridge.append("ZalithLauncher: loading SDL3");
-            System.loadLibrary("SDL3");
-            LoggerBridge.append("ZalithLauncher: loading SDL2");
-            try {
-                System.loadLibrary("SDL2");
-            } catch (UnsatisfiedLinkError ignored) {
-                // optional on some builds
-            }
-            LoggerBridge.append("ZalithLauncher: setting up SDL JNI");
-            SdlBridge.setupJNI();
-            LoggerBridge.append("ZalithLauncher: binding SDL surface");
-            SdlBridge.setSdlEnabled(true);
-            SDLSurface surface = SDLActivity.getSDLSurface();
-            if (surface != null) {
-                surface.surfaceChanged();
-                if (windowWidth > 0 && windowHeight > 0) {
-                    surface.nativeResize(windowWidth, windowHeight);
+            if (Looper.myLooper() == Looper.getMainLooper()) {
+                work.run();
+            } else {
+                new Handler(Looper.getMainLooper()).post(work);
+                if (!done.await(15, TimeUnit.SECONDS)) {
+                    LoggerBridge.append("ZalithLauncher: SDL init timed out on main thread");
+                    SdlBridge.clearSdlInitialized();
+                    return false;
                 }
             }
-            LoggerBridge.append("ZalithLauncher: SDL support enabled!");
-            return true;
-        } catch (Throwable e) {
-            SdlBridge.setSdlEnabled(false);
+            return ok.get();
+        } catch (Throwable t) {
+            LoggerBridge.append("ZalithLauncher: SDL launcher integration failed: " + t);
             SdlBridge.clearSdlInitialized();
-            StringWriter trace = new StringWriter();
-            e.printStackTrace(new PrintWriter(trace));
-            LoggerBridge.append("ZalithLauncher: SDL launcher integration is unavailable:\n" + trace);
             return false;
         }
     }
