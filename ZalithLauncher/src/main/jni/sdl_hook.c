@@ -20,6 +20,7 @@ typedef struct SDL_Window SDL_Window;
 typedef struct SDL_Rect { int x, y, w, h; } SDL_Rect;
 
 bool SDL_InitSubSystem(SDL_InitFlags flags);
+void SDL_SetMainReady(void);
 bool SDL_SetHint(const char *name, const char *value);
 bool SDL_SetTextInputArea(SDL_Window *window, const SDL_Rect *rect, int cursor);
 void SDL_SetError(const char *fmt, ...);
