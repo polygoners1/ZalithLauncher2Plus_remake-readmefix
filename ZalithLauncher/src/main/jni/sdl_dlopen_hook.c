@@ -27,11 +27,21 @@ typedef bytehook_stub_t (*bytehook_hook_all_fn)(const char *callee_path_name, co
 static void *sdlHandle;
 static jni_on_load_func_t originalSdlJniOnLoad;
 
+static volatile int sSdlJniOnLoadDone = 0;
+
 static jint isolatedSdlJniOnLoad(JavaVM *vm, void *reserved) {
+    /* ART/System.loadLibrary may resolve JNI_OnLoad many times; original OnLoad
+     * itself can re-enter via dlsym. Run real OnLoad exactly once on Dalvik. */
+    if (sSdlJniOnLoadDone) {
+        return JNI_VERSION_1_4;
+    }
     if (originalSdlJniOnLoad != NULL && pojav_environ != NULL
             && pojav_environ->dalvikJavaVMPtr == vm) {
-        LOG_TO_I("SDL_Hook: running real SDL JNI_OnLoad on Dalvik/ART vm=%p", (void *) vm);
-        return originalSdlJniOnLoad(vm, reserved);
+        sSdlJniOnLoadDone = 1;
+        LOG_TO_I("SDL_Hook: running real SDL JNI_OnLoad ONCE on Dalvik/ART vm=%p", (void *) vm);
+        jint ver = originalSdlJniOnLoad(vm, reserved);
+        LOG_TO_I("SDL_Hook: real SDL JNI_OnLoad finished, version=0x%x", (unsigned) ver);
+        return ver;
     }
     LOG_TO_I("SDL_Hook: skip SDL JNI_OnLoad for non-Dalvik vm=%p (dalvik=%p)",
              (void *) vm,
@@ -53,7 +63,7 @@ static void *customDlsym(void *handle, const char *symbol) {
     if (symbol != NULL && strcmp(symbol, "JNI_OnLoad") == 0 && result != NULL) {
         if (isSdlJniOnLoadSymbol(result) || (sdlHandle != NULL && handle == sdlHandle)) {
             originalSdlJniOnLoad = (jni_on_load_func_t) result;
-            LOG_TO_I("SDL_Hook: replacing libSDL3 JNI_OnLoad %p with isolated", result);
+            if (!sSdlJniOnLoadDone) LOG_TO_I("SDL_Hook: replacing libSDL3 JNI_OnLoad %p with isolated", result);
             result = (void *) isolatedSdlJniOnLoad;
         }
     }
