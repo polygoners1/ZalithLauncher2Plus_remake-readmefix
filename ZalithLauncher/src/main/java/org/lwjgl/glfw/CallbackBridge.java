@@ -352,16 +352,15 @@ public class CallbackBridge {
                         return true;
                     }
                     try {
+                        // Resolve classes BEFORE loadLibrary so JNI_OnLoad FindClass succeeds
+                        Class.forName("org.libsdl.app.SDLActivity");
+                        Class.forName("org.libsdl.app.SDL");
+                        Class.forName("org.libsdl.app.SDLSurface");
+                        Class.forName("org.libsdl.app.SDLAudioManager");
+                        Class.forName("org.libsdl.app.SDLControllerManager");
                         try {
-                            Class.forName("org.libsdl.app.SDLActivity");
-                            Class.forName("org.libsdl.app.SDL");
-                            Class.forName("org.libsdl.app.SDLSurface");
-                            Class.forName("org.libsdl.app.SDLAudioManager");
-                            Class.forName("org.libsdl.app.SDLControllerManager");
                             Class.forName("org.libsdl.app.HIDDeviceManager");
-                        } catch (ClassNotFoundException cnf) {
-                            LoggerBridge.append("ZalithLauncher: SDL Java classes missing: " + cnf);
-                            return false;
+                        } catch (ClassNotFoundException ignored) {
                         }
 
                         LoggerBridge.append("ZalithLauncher: loading SDL3");
@@ -373,27 +372,22 @@ public class CallbackBridge {
                         } catch (UnsatisfiedLinkError ignored) {
                         }
 
-LoggerBridge.append("ZalithLauncher: setting up SDL JNI");
-                        try {
-                            SdlBridge.setupJNI();
-                        } catch (Throwable jniEx) {
-                            // Expected when JNI_OnLoad was skipped (no RegisterNatives).
-                            // Window/input still go through sdl_hook + prepareSurface.
-                            LoggerBridge.append("ZalithLauncher: setupJNI soft-fail (OK if OnLoad skipped): " + jniEx);
+                        LoggerBridge.append("ZalithLauncher: setting up SDL JNI");
+                        if (!SdlBridge.setupJNI()) {
+                            throw new UnsatisfiedLinkError("SdlBridge.setupJNI failed after loadLibrary");
                         }
 
                         LoggerBridge.append("ZalithLauncher: binding SDL surface");
                         SdlBridge.setSdlEnabled(true);
-                        try {
-                            SDLSurface surface = SDLActivity.getSDLSurface();
-                            if (surface != null) {
-                                surface.surfaceChanged();
-                                if (windowWidth > 0 && windowHeight > 0) {
-                                    surface.nativeResize(windowWidth, windowHeight);
-                                }
+                        SDLSurface surface = SDLActivity.getSDLSurface();
+                        if (surface != null) {
+                            surface.surfaceChanged();
+                            if (windowWidth > 0 && windowHeight > 0) {
+                                surface.nativeResize(windowWidth, windowHeight);
                             }
-                        } catch (Throwable surfEx) {
-                            LoggerBridge.append("ZalithLauncher: SDL surface bind soft-fail: " + surfEx);
+                            LoggerBridge.append("ZalithLauncher: SDL surface bound OK");
+                        } else {
+                            LoggerBridge.append("ZalithLauncher: SDL surface not ready yet (prepareSurface later)");
                         }
 
                         LoggerBridge.append("ZalithLauncher: SDL support enabled!");
