@@ -336,11 +336,6 @@ public class CallbackBridge {
      */
     @Keep
     public static boolean notifyLauncher(int type, int... action) {
-        // Official structure + device-safe load:
-        // libSDL3 JNI_OnLoad SIGSEGVs on some ART devices when ClassLoader association is wrong
-        // (see hs_err: art::ThrowNewWrappedException during FindClass). Native hook
-        // (sdl_dlopen_hook) replaces JNI_OnLoad with a no-op so System.loadLibrary can finish.
-        // C-level SDL_Init still runs via sdl_hook proxies.
         if (action == null || action.length == 0) {
             LoggerBridge.append("ZalithLauncher: SDL notification has no action");
             return false;
@@ -352,31 +347,22 @@ public class CallbackBridge {
                         return true;
                     }
                     try {
-                        // Resolve classes BEFORE loadLibrary so JNI_OnLoad FindClass succeeds
+                        // Match official: classes must resolve before loadLibrary for FindClass
                         Class.forName("org.libsdl.app.SDLActivity");
                         Class.forName("org.libsdl.app.SDL");
                         Class.forName("org.libsdl.app.SDLSurface");
                         Class.forName("org.libsdl.app.SDLAudioManager");
                         Class.forName("org.libsdl.app.SDLControllerManager");
-                        try {
-                            Class.forName("org.libsdl.app.HIDDeviceManager");
-                        } catch (ClassNotFoundException ignored) {
-                        }
 
                         LoggerBridge.append("ZalithLauncher: loading SDL3");
                         System.loadLibrary("SDL3");
-                        SdlBridge.markNativesLoaded();
                         LoggerBridge.append("ZalithLauncher: loading SDL2");
                         try {
                             System.loadLibrary("SDL2");
                         } catch (UnsatisfiedLinkError ignored) {
                         }
-
                         LoggerBridge.append("ZalithLauncher: setting up SDL JNI");
-                        if (!SdlBridge.setupJNI()) {
-                            throw new UnsatisfiedLinkError("SdlBridge.setupJNI failed after loadLibrary");
-                        }
-
+                        SdlBridge.setupJNI();
                         LoggerBridge.append("ZalithLauncher: binding SDL surface");
                         SdlBridge.setSdlEnabled(true);
                         SDLSurface surface = SDLActivity.getSDLSurface();
@@ -387,21 +373,20 @@ public class CallbackBridge {
                             }
                             LoggerBridge.append("ZalithLauncher: SDL surface bound OK");
                         } else {
-                            LoggerBridge.append("ZalithLauncher: SDL surface not ready yet (prepareSurface later)");
+                            LoggerBridge.append("ZalithLauncher: SDL surface not ready yet");
                         }
-
                         LoggerBridge.append("ZalithLauncher: SDL support enabled!");
                         return true;
                     } catch (Throwable e) {
-                        StringWriter sw = new StringWriter();
-                        e.printStackTrace(new PrintWriter(sw));
-                        String trace = sw.toString();
-                        if (trace.length() > 900) {
-                            trace = trace.substring(0, 900) + "...";
-                        }
+                        SdlBridge.setSdlEnabled(false);
+                        SdlBridge.clearSdlInitialized();
+                        StringWriter trace = new StringWriter();
+                        e.printStackTrace(new PrintWriter(trace));
                         LoggerBridge.append("ZalithLauncher: SDL launcher integration is unavailable:\n" + trace);
-                        return false;
                     }
+                }
+                if (action[0] == ACTION_SEND_TEXTBOX_RECT) {
+                    // TODO: text box rect sync
                 }
                 break;
             default:

@@ -1,15 +1,5 @@
 // SDL JNI_OnLoad isolation for the embedded game JVM.
-// Reference: official ZalithLauncher2 + Amethyst e4c79084d
-//
-// Critical: only ONE libSDL3 mapping must exist. Using RTLD_LOCAL|RTLD_NOW
-// before System.loadLibrary can create a second copy — OnLoad runs on one
-// instance while SDL_Init uses the other → SIGSEGV in Android backend.
-//
-// Strategy (official-compatible):
-// 1) Prefer RTLD_NOLOAD to discover the System.loadLibrary handle.
-// 2) Replace JNI_OnLoad with isolated wrapper.
-// 3) isolated runs real OnLoad ONLY once when vm == dalvikJavaVMPtr.
-// 4) Hotspot lookups get no-op OnLoad.
+// Reference: https://github.com/AngelAuraMC/Amethyst-Android/commit/e4c79084d
 
 #include <dlfcn.h>
 #include <jni.h>
@@ -30,66 +20,40 @@ typedef bytehook_stub_t (*bytehook_hook_all_fn)(const char *callee_path_name, co
 
 static void *sdlHandle;
 static jni_on_load_func_t originalSdlJniOnLoad;
+
 static volatile int sSdlJniOnLoadDone = 0;
 
 static jint isolatedSdlJniOnLoad(JavaVM *vm, void *reserved) {
+    /* Run real OnLoad only once on Dalvik — re-entry via dlsym during OnLoad is common. */
     if (sSdlJniOnLoadDone) {
         return JNI_VERSION_1_4;
     }
     if (originalSdlJniOnLoad != NULL && pojav_environ != NULL
             && pojav_environ->dalvikJavaVMPtr == vm) {
         sSdlJniOnLoadDone = 1;
-        LOG_TO_I("SDL_Hook: running real SDL JNI_OnLoad ONCE on Dalvik/ART vm=%p", (void *) vm);
+        LOG_TO_I("SDL_Hook: real JNI_OnLoad ONCE on Dalvik vm=%p", (void *) vm);
         jint ver = originalSdlJniOnLoad(vm, reserved);
-        LOG_TO_I("SDL_Hook: real SDL JNI_OnLoad finished, version=0x%x", (unsigned) ver);
+        LOG_TO_I("SDL_Hook: JNI_OnLoad done version=0x%x", (unsigned) ver);
         return ver;
     }
-    LOG_TO_I("SDL_Hook: skip SDL JNI_OnLoad for non-Dalvik vm=%p (dalvik=%p)",
-             (void *) vm,
-             pojav_environ ? (void *) pojav_environ->dalvikJavaVMPtr : NULL);
     return JNI_VERSION_1_4;
-}
-
-static void *resolveSdlHandle(void) {
-    if (sdlHandle != NULL) {
-        return sdlHandle;
-    }
-    /* Prefer the copy already loaded by System.loadLibrary — do NOT create a second mapping. */
-    void *h = dlopen("libSDL3.so", RTLD_NOLOAD);
-    if (h == NULL) {
-        /* Fallback only if not loaded yet (should be rare during dlsym of JNI_OnLoad). */
-        h = dlopen("libSDL3.so", RTLD_NOW);
-    }
-    sdlHandle = h;
-    return sdlHandle;
-}
-
-static int isSdlJniOnLoadSymbol(void *addr) {
-    if (addr == NULL) return 0;
-    Dl_info info;
-    if (dladdr(addr, &info) == 0 || info.dli_fname == NULL) return 0;
-    return strstr(info.dli_fname, "libSDL3.so") != NULL;
 }
 
 static void *customDlsym(void *handle, const char *symbol) {
     void *result = BYTEHOOK_CALL_PREV(customDlsym, dlsym_func_t, handle, symbol);
     BYTEHOOK_POP_STACK();
-
-    void *sdl = resolveSdlHandle();
-
-    if (symbol != NULL && strcmp(symbol, "JNI_OnLoad") == 0 && result != NULL) {
-        int fromSdl = (sdl != NULL && handle == sdl) || isSdlJniOnLoadSymbol(result);
-        if (fromSdl) {
-            originalSdlJniOnLoad = (jni_on_load_func_t) result;
-            if (!sSdlJniOnLoadDone) {
-                LOG_TO_I("SDL_Hook: replacing libSDL3 JNI_OnLoad %p with isolated (handle=%p sdl=%p)",
-                         result, handle, sdl);
-            }
-            result = (void *) isolatedSdlJniOnLoad;
+    if (sdlHandle == NULL) {
+        {
+            void *noload = dlopen("libSDL3.so", RTLD_NOLOAD);
+            sdlHandle = noload ? noload : dlopen("libSDL3.so", RTLD_NOW);
         }
     }
-
-    /* LWJGL org.lwjgl.sdl resolves SDL functions via dlsym — proxy through sdl_hook. */
+    if (sdlHandle != NULL && handle == sdlHandle && symbol != NULL && strcmp(symbol, "JNI_OnLoad") == 0) {
+        originalSdlJniOnLoad = (jni_on_load_func_t) result;
+        result = (void *) isolatedSdlJniOnLoad;
+    }
+    // LWJGL 的 org.lwjgl.sdl 绑定等消费方经 dlsym 解析 SDL 函数指针后直接调用，
+    // hook_all 的 GOT 导入补丁拦截不到；在解析出口统一换成 sdl_hook 的 dlsym 层代理
     if (result != NULL && symbol != NULL) {
         void *proxy = sdlDlsymProxy(symbol, result);
         if (proxy != NULL) {
@@ -103,6 +67,4 @@ static void *customDlsym(void *handle, const char *symbol) {
 void create_sdl_dlopen_hooks(bytehook_hook_all_fn hookAll) {
     if (hookAll == NULL) return;
     hookAll(NULL, "dlsym", (void *) customDlsym, NULL, NULL);
-    /* ART linker may resolve JNI_OnLoad via __loader_dlsym */
-    hookAll(NULL, "__loader_dlsym", (void *) customDlsym, NULL, NULL);
 }
