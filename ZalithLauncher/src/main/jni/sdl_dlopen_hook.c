@@ -1,13 +1,11 @@
 // SDL JNI_OnLoad isolation for the embedded game JVM.
 // Reference: https://github.com/AngelAuraMC/Amethyst-Android/commit/e4c79084d
 //
-// ZalithLauncher2Plus (device ZTE/Unisoc ART):
-// System.loadLibrary("SDL3") → ART LoadNativeLibrary → real JNI_OnLoad SIGSEGVs inside
-// art::Thread::ThrowNewWrappedException (FindClass failure with bad ClassLoader).
-// Official isolation only replaces JNI_OnLoad when handle==sdlHandle; ART often passes a
-// different handle and/or resolves via __loader_dlsym, so the real OnLoad still runs.
-// Fix: identify libSDL3 JNI_OnLoad via dladdr, replace always, and NEVER call original
-// OnLoad on this tree (library still loads; C SDL_Init continues via sdl_hook proxies).
+// Official behavior: when ART/Dalvik System.loadLibrary runs JNI_OnLoad, call the real
+// OnLoad with dalvikJavaVMPtr so Android backend + RegisterNatives initialize.
+// When the embedded Hotspot game JVM looks up JNI_OnLoad, return a no-op so Hotspot
+// never runs SDL's FindClass path (SIGSEGV on some ART devices).
+// Extra: identify libSDL3 via dladdr and also hook __loader_dlsym (ART linker).
 
 #include <dlfcn.h>
 #include <jni.h>
@@ -30,12 +28,14 @@ static void *sdlHandle;
 static jni_on_load_func_t originalSdlJniOnLoad;
 
 static jint isolatedSdlJniOnLoad(JavaVM *vm, void *reserved) {
-    (void) reserved;
-    // Do NOT call originalSdlJniOnLoad — it SIGSEGVs on affected ART devices during FindClass.
-    LOG_TO_I("SDL_Hook: isolated JNI_OnLoad skip (vm=%p dalvik=%p original=%p)",
+    if (originalSdlJniOnLoad != NULL && pojav_environ != NULL
+            && pojav_environ->dalvikJavaVMPtr == vm) {
+        LOG_TO_I("SDL_Hook: running real SDL JNI_OnLoad on Dalvik/ART vm=%p", (void *) vm);
+        return originalSdlJniOnLoad(vm, reserved);
+    }
+    LOG_TO_I("SDL_Hook: skip SDL JNI_OnLoad for non-Dalvik vm=%p (dalvik=%p)",
              (void *) vm,
-             pojav_environ ? (void *) pojav_environ->dalvikJavaVMPtr : NULL,
-             (void *) originalSdlJniOnLoad);
+             pojav_environ ? (void *) pojav_environ->dalvikJavaVMPtr : NULL);
     return JNI_VERSION_1_4;
 }
 
@@ -51,7 +51,7 @@ static void *customDlsym(void *handle, const char *symbol) {
     BYTEHOOK_POP_STACK();
 
     if (symbol != NULL && strcmp(symbol, "JNI_OnLoad") == 0 && result != NULL) {
-        if (isSdlJniOnLoadSymbol(result)) {
+        if (isSdlJniOnLoadSymbol(result) || (sdlHandle != NULL && handle == sdlHandle)) {
             originalSdlJniOnLoad = (jni_on_load_func_t) result;
             LOG_TO_I("SDL_Hook: replacing libSDL3 JNI_OnLoad %p with isolated", result);
             result = (void *) isolatedSdlJniOnLoad;
@@ -62,7 +62,6 @@ static void *customDlsym(void *handle, const char *symbol) {
         sdlHandle = dlopen("libSDL3.so", RTLD_LOCAL | RTLD_NOW);
     }
 
-    // LWJGL org.lwjgl.sdl bindings resolve SDL function pointers via dlsym; proxy them.
     if (result != NULL && symbol != NULL) {
         void *proxy = sdlDlsymProxy(symbol, result);
         if (proxy != NULL) {
@@ -76,6 +75,5 @@ static void *customDlsym(void *handle, const char *symbol) {
 void create_sdl_dlopen_hooks(bytehook_hook_all_fn hookAll) {
     if (hookAll == NULL) return;
     hookAll(NULL, "dlsym", (void *) customDlsym, NULL, NULL);
-    // ART/linker on many devices resolves JNI_OnLoad via __loader_dlsym, not dlsym.
     hookAll(NULL, "__loader_dlsym", (void *) customDlsym, NULL, NULL);
 }
