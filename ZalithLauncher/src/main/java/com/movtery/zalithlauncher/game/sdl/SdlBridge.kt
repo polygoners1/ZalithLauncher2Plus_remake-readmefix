@@ -103,24 +103,27 @@ object SdlBridge {
     fun preloadNatives(): Boolean {
         if (nativesLoaded) return true
         return try {
-            android.util.Log.i("SdlBridge", "preloadNatives: resolving org.libsdl.app classes")
-            // JNI_OnLoad of libSDL3 registers natives via FindClass — classes MUST
-            // be resolvable BEFORE System.loadLibrary, otherwise nativeSetupJNI ULE.
+            android.util.Log.i("SdlBridge", "preloadNatives: resolving org.libsdl.app classes (ART main)")
             Class.forName("org.libsdl.app.SDLActivity")
             Class.forName("org.libsdl.app.SDL")
             Class.forName("org.libsdl.app.SDLSurface")
             Class.forName("org.libsdl.app.SDLAudioManager")
             Class.forName("org.libsdl.app.SDLControllerManager")
-            Class.forName("org.libsdl.app.HIDDeviceManager")
-            android.util.Log.i("SdlBridge", "preloadNatives: loading libSDL3")
+            try { Class.forName("org.libsdl.app.HIDDeviceManager") } catch (_: ClassNotFoundException) {}
+            android.util.Log.i("SdlBridge", "preloadNatives: System.loadLibrary(SDL3) on ART")
             System.loadLibrary("SDL3")
+            try { System.loadLibrary("SDL2") } catch (_: UnsatisfiedLinkError) {}
+            // Register natives while still on pure ART
             try {
-                System.loadLibrary("SDL2")
-            } catch (_: UnsatisfiedLinkError) {
-                // optional
+                if (!jniReady) {
+                    SDL.setupJNI()
+                    jniReady = true
+                }
+            } catch (t: Throwable) {
+                android.util.Log.w("SdlBridge", "preload setupJNI: $t")
             }
             nativesLoaded = true
-            android.util.Log.i("SdlBridge", "preloadNatives: OK")
+            android.util.Log.i("SdlBridge", "preloadNatives: OK (natives registered on ART)")
             true
         } catch (t: Throwable) {
             android.util.Log.e("SdlBridge", "preloadNatives failed", t)

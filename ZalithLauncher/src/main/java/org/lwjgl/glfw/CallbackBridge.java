@@ -354,12 +354,19 @@ public class CallbackBridge {
                         Class.forName("org.libsdl.app.SDLAudioManager");
                         Class.forName("org.libsdl.app.SDLControllerManager");
 
-                        LoggerBridge.append("ZalithLauncher: loading SDL3");
-                        System.loadLibrary("SDL3");
-                        LoggerBridge.append("ZalithLauncher: loading SDL2");
-                        try {
-                            System.loadLibrary("SDL2");
-                        } catch (UnsatisfiedLinkError ignored) {
+                        // Prefer library already loaded on ART main thread (Application.onCreate).
+                        // Calling System.loadLibrary here can re-enter JNI_OnLoad via ART
+                        // LoadNativeLibrary and SIGSEGV on some devices (FindClass).
+                        if (SdlBridge.isNativesLoaded()) {
+                            LoggerBridge.append("ZalithLauncher: SDL3 already preloaded on ART");
+                        } else {
+                            LoggerBridge.append("ZalithLauncher: loading SDL3");
+                            System.loadLibrary("SDL3");
+                            LoggerBridge.append("ZalithLauncher: loading SDL2");
+                            try {
+                                System.loadLibrary("SDL2");
+                            } catch (UnsatisfiedLinkError ignored) {
+                            }
                         }
                         LoggerBridge.append("ZalithLauncher: setting up SDL JNI");
                         SdlBridge.setupJNI();

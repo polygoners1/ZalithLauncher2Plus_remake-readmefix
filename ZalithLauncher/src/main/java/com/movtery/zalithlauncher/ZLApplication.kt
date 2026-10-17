@@ -41,6 +41,7 @@ import com.movtery.zalithlauncher.setting.loadAllSettings
 import com.movtery.zalithlauncher.ui.activities.showFatalError
 import com.movtery.zalithlauncher.ui.activities.showLauncherCrash
 import com.movtery.zalithlauncher.game.version.mod.update.ModUpdateChecker
+import com.movtery.zalithlauncher.game.sdl.SdlBridge
 import com.movtery.zalithlauncher.utils.device.Architecture
 import com.movtery.zalithlauncher.utils.logging.Logger
 import com.movtery.zalithlauncher.utils.writeCrashFile
@@ -91,6 +92,14 @@ class ZLApplication : Application(), SingletonImageLoader.Factory {
             initializeData()
             PathManager.DIR_FILES_PRIVATE = getDir("files", MODE_PRIVATE)
             DEVICE_ARCHITECTURE = Architecture.getDeviceArchitecture()
+
+            // Load libSDL3 on pure ART main thread BEFORE any game JVM starts.
+            // System.loadLibrary from the game path (nativeNotifyLauncher → ART attach)
+            // triggers SIGSEGV in JNI_OnLoad FindClass on some devices (ZTE API 33).
+            // When already loaded, later notifyLauncher loadLibrary is a no-op.
+            runCatching {
+                SdlBridge.preloadNatives()
+            }.onFailure { Log.w("ZLApplication", "SDL preload failed (will retry at game start)", it) }
             //Force x86 lib directory for Asus x86 based zenfones
             if (Architecture.isx86Device() && Architecture.is32BitsDevice) {
                 val originalJNIDirectory = applicationInfo.nativeLibraryDir
