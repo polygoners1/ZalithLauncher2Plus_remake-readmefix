@@ -1,5 +1,5 @@
 // SDL JNI_OnLoad isolation for the embedded game JVM.
-// Reference: https://github.com/AngelAuraMC/Amethyst-Android/commit/e4c79084d
+// Reference: official ZalithLauncher2 + Amethyst e4c79084d
 
 #include <dlfcn.h>
 #include <jni.h>
@@ -20,11 +20,9 @@ typedef bytehook_stub_t (*bytehook_hook_all_fn)(const char *callee_path_name, co
 
 static void *sdlHandle;
 static jni_on_load_func_t originalSdlJniOnLoad;
-
 static volatile int sSdlJniOnLoadDone = 0;
 
 static jint isolatedSdlJniOnLoad(JavaVM *vm, void *reserved) {
-    /* Run real OnLoad only once on Dalvik — re-entry via dlsym during OnLoad is common. */
     if (sSdlJniOnLoadDone) {
         return JNI_VERSION_1_4;
     }
@@ -43,17 +41,14 @@ static void *customDlsym(void *handle, const char *symbol) {
     void *result = BYTEHOOK_CALL_PREV(customDlsym, dlsym_func_t, handle, symbol);
     BYTEHOOK_POP_STACK();
     if (sdlHandle == NULL) {
-        {
-            void *noload = dlopen("libSDL3.so", RTLD_NOLOAD);
-            sdlHandle = noload ? noload : dlopen("libSDL3.so", RTLD_NOW);
-        }
+        /* Prefer already-mapped System.loadLibrary copy */
+        void *noload = dlopen("libSDL3.so", RTLD_NOLOAD);
+        sdlHandle = noload ? noload : dlopen("libSDL3.so", RTLD_NOW);
     }
     if (sdlHandle != NULL && handle == sdlHandle && symbol != NULL && strcmp(symbol, "JNI_OnLoad") == 0) {
         originalSdlJniOnLoad = (jni_on_load_func_t) result;
         result = (void *) isolatedSdlJniOnLoad;
     }
-    // LWJGL 的 org.lwjgl.sdl 绑定等消费方经 dlsym 解析 SDL 函数指针后直接调用，
-    // hook_all 的 GOT 导入补丁拦截不到；在解析出口统一换成 sdl_hook 的 dlsym 层代理
     if (result != NULL && symbol != NULL) {
         void *proxy = sdlDlsymProxy(symbol, result);
         if (proxy != NULL) {

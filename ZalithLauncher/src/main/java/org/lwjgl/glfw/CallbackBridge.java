@@ -347,26 +347,18 @@ public class CallbackBridge {
                         return true;
                     }
                     try {
-                        // Match official: classes must resolve before loadLibrary for FindClass
                         Class.forName("org.libsdl.app.SDLActivity");
                         Class.forName("org.libsdl.app.SDL");
                         Class.forName("org.libsdl.app.SDLSurface");
                         Class.forName("org.libsdl.app.SDLAudioManager");
                         Class.forName("org.libsdl.app.SDLControllerManager");
 
-                        // Prefer library already loaded on ART main thread (Application.onCreate).
-                        // Calling System.loadLibrary here can re-enter JNI_OnLoad via ART
-                        // LoadNativeLibrary and SIGSEGV on some devices (FindClass).
-                        if (SdlBridge.isNativesLoaded()) {
-                            LoggerBridge.append("ZalithLauncher: SDL3 already preloaded on ART");
-                        } else {
-                            LoggerBridge.append("ZalithLauncher: loading SDL3");
-                            System.loadLibrary("SDL3");
-                            LoggerBridge.append("ZalithLauncher: loading SDL2");
-                            try {
-                                System.loadLibrary("SDL2");
-                            } catch (UnsatisfiedLinkError ignored) {
-                            }
+                        LoggerBridge.append("ZalithLauncher: loading SDL3");
+                        System.loadLibrary("SDL3");
+                        LoggerBridge.append("ZalithLauncher: loading SDL2");
+                        try {
+                            System.loadLibrary("SDL2");
+                        } catch (UnsatisfiedLinkError ignored) {
                         }
                         LoggerBridge.append("ZalithLauncher: setting up SDL JNI");
                         SdlBridge.setupJNI();
@@ -378,9 +370,6 @@ public class CallbackBridge {
                             if (windowWidth > 0 && windowHeight > 0) {
                                 surface.nativeResize(windowWidth, windowHeight);
                             }
-                            LoggerBridge.append("ZalithLauncher: SDL surface bound OK");
-                        } else {
-                            LoggerBridge.append("ZalithLauncher: SDL surface not ready yet");
                         }
                         LoggerBridge.append("ZalithLauncher: SDL support enabled!");
                         return true;
@@ -393,7 +382,7 @@ public class CallbackBridge {
                     }
                 }
                 if (action[0] == ACTION_SEND_TEXTBOX_RECT) {
-                    // TODO: text box rect sync
+                    // TODO
                 }
                 break;
             default:

@@ -1,3 +1,4 @@
+import com.movtery.zalithlauncher.context.GlobalContext
 /*
  * Zalith Launcher 2
  * Copyright (C) 2025 MovTery <movtery228@qq.com> and contributors
@@ -420,6 +421,9 @@ abstract class Launcher(
             map["AWTSTUB_WIDTH"] = screenSize.width.toString()
             map["AWTSTUB_HEIGHT"] = screenSize.height.toString()
             map["MOD_ANDROID_RUNTIME"] = PathManager.DIR_RUNTIME_MOD?.absolutePath ?: ""
+            // Official dual-VM bridge: SDL/Android backend needs ART JavaVM + Application
+            map["DALVIK_JAVAVM"] = ZLBridge.getJavaVMPointer().toString()
+            map["DALVIK_APPLICATION"] = ZLBridge.jObjectToString(GlobalContext.applicationContext)
 
             if (AllSettings.dumpShaders.getValue()) map["LIBGL_VGPU_DUMP"] = "1"
             if (AllSettings.zinkPreferSystemDriver.getValue()) map["POJAV_ZINK_PREFER_SYSTEM_DRIVER"] = "1"

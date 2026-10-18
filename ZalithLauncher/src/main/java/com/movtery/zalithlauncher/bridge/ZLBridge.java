@@ -76,6 +76,11 @@ public final class ZLBridge {
     @Keep public static native void sendInputData(int type, int i1, int i2, int i3, int i4);
     @Keep public static native void clipboardReceived(String data, String mimeTypeSub);
 
+    // Dual-VM bridge (official): inject ART JavaVM + Application into game env
+    @Keep public static native long getJavaVMPointer();
+    /** Global-ref object and return hex address string for env injection. */
+    @Keep public static native String jObjectToString(Object object);
+
     //Utils
     @Keep public static native int chdir(String path);
     @Keep public static native void fsrInit(int qualityPreset);

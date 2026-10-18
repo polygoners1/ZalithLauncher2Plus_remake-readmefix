@@ -160,6 +160,23 @@ bool notifyLauncher(JNIEnv *dvm_env, int type, int actions[], int len) {
             pojav_environ->method_notifyLauncher, type, actionArray);
 }
 
+
+JNIEXPORT jlong JNICALL Java_com_movtery_zalithlauncher_bridge_ZLBridge_getJavaVMPointer(JNIEnv *env, jclass clazz) {
+    (void) env; (void) clazz;
+    if (pojav_environ == NULL || pojav_environ->dalvikJavaVMPtr == NULL) return 0;
+    return (jlong) (intptr_t) pojav_environ->dalvikJavaVMPtr;
+}
+
+JNIEXPORT jstring JNICALL Java_com_movtery_zalithlauncher_bridge_ZLBridge_jObjectToString(JNIEnv *env, jclass clazz, jobject object) {
+    (void) clazz;
+    if (object == NULL) return NULL;
+    jobject global_ref = (*env)->NewGlobalRef(env, object);
+    if (global_ref == NULL) return NULL;
+    char buf[32];
+    snprintf(buf, sizeof(buf), "%llx", (unsigned long long) (uintptr_t) global_ref);
+    return (*env)->NewStringUTF(env, buf);
+}
+
 JNIEnv* get_attached_env(JavaVM* jvm) {
     if (jvm == NULL) return NULL;
     JNIEnv *env = NULL;
